@@ -6,6 +6,28 @@ import (
 	"net/http"
 )
 
+type apiConfig struct {
+	fsHits int
+}
+
+func (cfg *apiConfig) metricsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		cfg.fsHits += 1
+		next.ServeHTTP(writer, request)
+	})
+}
+
+func (cfg *apiConfig) fsHitsHandler(writer http.ResponseWriter, request *http.Request) {
+	log.Println("fsHitsHandler ep hit!")
+	writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	hitsString := fmt.Sprintf("Hits: %d", cfg.fsHits)
+	_, err := writer.Write([]byte(hitsString))
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+}
+
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set("Access-Control-Allow-Origin", "*")
@@ -22,7 +44,9 @@ func corsMiddleware(next http.Handler) http.Handler {
 func main() {
 	const port = 8080
 	mux := http.NewServeMux()
-	mux.Handle("/app/", http.StripPrefix("/app/", http.FileServer(http.Dir("./"))))
+	fsHandler := http.StripPrefix("/app/", http.FileServer(http.Dir("./")))
+	apiCfg := apiConfig{fsHits: 0}
+	mux.Handle("/app/", apiCfg.metricsMiddleware(fsHandler))
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)

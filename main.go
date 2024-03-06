@@ -83,14 +83,15 @@ func validateChippy(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error decoding body JSON params!")
 		if encodedErrJson, encodingErr := json.Marshal(errorJson{ErrMsg: "Something went wrong"}); encodingErr != nil {
 			log.Println("Inception wtf!")
+			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
 			_, writeErr := w.Write(encodedErrJson)
 			if writeErr != nil {
 				log.Println("Stopping this right now lol")
 			}
 		}
-		w.WriteHeader(http.StatusInternalServerError)
 	} else if len(jsonBody.BodyParam) > MaxChippyLen {
 		log.Printf("Chippy too damn long!")
 		if encodedErrJson, encodingErr := json.Marshal(errorJson{ErrMsg: "Chirp is too long"}); encodingErr != nil {
@@ -98,12 +99,11 @@ func validateChippy(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
 			_, writeErr := w.Write(encodedErrJson)
 			if writeErr != nil {
 				log.Println("Stopping this right now lol")
 				w.WriteHeader(http.StatusInternalServerError)
-			} else {
-				w.WriteHeader(http.StatusBadRequest)
 			}
 		}
 	} else {
@@ -115,12 +115,11 @@ func validateChippy(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
 			_, writeErr := w.Write(encodedValidJson)
 			if writeErr != nil {
 				log.Println("Stopping this right now lol")
 				w.WriteHeader(http.StatusInternalServerError)
-			} else {
-				w.WriteHeader(http.StatusOK)
 			}
 		}
 	}

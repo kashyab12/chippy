@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	chi2 "github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
 )
@@ -50,11 +51,12 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 func main() {
 	const port = 8080
-	mux := http.NewServeMux()
-	fsHandler := http.StripPrefix("/app/", http.FileServer(http.Dir("./")))
+	router := chi2.NewRouter()
 	apiCfg := apiConfig{fsHits: 0}
-	mux.Handle("/app/", apiCfg.metricsMiddleware(fsHandler))
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	fsHandler := apiCfg.metricsMiddleware(http.StripPrefix("/app", http.FileServer(http.Dir("./"))))
+	router.Handle("/app/*", fsHandler)
+	router.Handle("/app", fsHandler)
+	router.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		log.Println("Readiness endpoint toggled.")
@@ -63,9 +65,9 @@ func main() {
 			return
 		}
 	})
-	mux.HandleFunc("/metrics/", apiCfg.fsHitsHandler)
-	mux.HandleFunc("/reset/", apiCfg.resetFsHitsHandler)
-	corsMux := corsMiddleware(mux)
+	router.Get("/metrics/", apiCfg.fsHitsHandler)
+	router.HandleFunc("/reset/", apiCfg.resetFsHitsHandler)
+	corsMux := corsMiddleware(router)
 	server := http.Server{
 		Handler: corsMux,
 		Addr:    fmt.Sprintf(":%v", port),

@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"slices"
+	"strings"
 )
 
 type apiConfig struct {
@@ -107,9 +109,16 @@ func validateChippy(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
+		badWords := []string{"kerfuffle", "sharbert", "fornax"}
+		splitString := strings.Split(jsonBody.BodyParam, " ")
+		for idx, word := range splitString {
+			if slices.Contains(badWords, strings.ToLower(word)) {
+				splitString[idx] = "****"
+			}
+		}
 		validJson := struct {
-			Valid bool `json:"valid"`
-		}{Valid: true}
+			ProfanedString string `json:"cleaned_body"`
+		}{ProfanedString: strings.Join(splitString, " ")}
 		if encodedValidJson, encodingErr := json.Marshal(validJson); encodingErr != nil {
 			log.Println("Inception wtf!")
 			w.WriteHeader(http.StatusInternalServerError)

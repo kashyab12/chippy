@@ -49,25 +49,29 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func readinessEndpoint(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	log.Println("Readiness endpoint toggled.")
+	_, err := w.Write([]byte("OK"))
+	if err != nil {
+		return
+	}
+}
+
 func main() {
 	const port = 8080
-	router := chi2.NewRouter()
+	appRouter := chi2.NewRouter()
+	apiRouter := chi2.NewRouter()
 	apiCfg := apiConfig{fsHits: 0}
 	fsHandler := apiCfg.metricsMiddleware(http.StripPrefix("/app", http.FileServer(http.Dir("./"))))
-	router.Handle("/app/*", fsHandler)
-	router.Handle("/app", fsHandler)
-	router.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		log.Println("Readiness endpoint toggled.")
-		_, err := w.Write([]byte("OK"))
-		if err != nil {
-			return
-		}
-	})
-	router.Get("/metrics/", apiCfg.fsHitsHandler)
-	router.HandleFunc("/reset/", apiCfg.resetFsHitsHandler)
-	corsMux := corsMiddleware(router)
+	appRouter.Handle("/app/*", fsHandler)
+	appRouter.Handle("/app", fsHandler)
+	apiRouter.Get("/healthz", readinessEndpoint)
+	apiRouter.Get("/metrics", apiCfg.fsHitsHandler)
+	apiRouter.HandleFunc("/reset", apiCfg.resetFsHitsHandler)
+	appRouter.Mount("/api", apiRouter)
+	corsMux := corsMiddleware(appRouter)
 	server := http.Server{
 		Handler: corsMux,
 		Addr:    fmt.Sprintf(":%v", port),

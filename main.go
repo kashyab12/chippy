@@ -1,14 +1,20 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	chi2 "github.com/go-chi/chi/v5"
+	"io"
 	"log"
 	"net/http"
 )
 
 type apiConfig struct {
 	fsHits int
+}
+
+type errorJson struct {
+	ErrMsg string `json:"error"`
 }
 
 func (cfg *apiConfig) metricsMiddleware(next http.Handler) http.Handler {
@@ -59,6 +65,67 @@ func readinessEndpoint(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
+func validateChippy(w http.ResponseWriter, r *http.Request) {
+	log.Println("Validating Chippy!")
+	const MaxChippyLen = 140
+	type reqBody struct {
+		BodyParam string `json:"body"`
+	}
+	decoder := json.NewDecoder(r.Body)
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(r.Body)
+	jsonBody := reqBody{}
+	if err := decoder.Decode(&jsonBody); err != nil {
+		log.Printf("Error decoding body JSON params!")
+		if encodedErrJson, encodingErr := json.Marshal(errorJson{ErrMsg: "Something went wrong"}); encodingErr != nil {
+			log.Println("Inception wtf!")
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			_, writeErr := w.Write(encodedErrJson)
+			if writeErr != nil {
+				log.Println("Stopping this right now lol")
+			}
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	} else if len(jsonBody.BodyParam) > MaxChippyLen {
+		log.Printf("Chippy too damn long!")
+		if encodedErrJson, encodingErr := json.Marshal(errorJson{ErrMsg: "Chirp is too long"}); encodingErr != nil {
+			log.Println("Inception wtf!")
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			_, writeErr := w.Write(encodedErrJson)
+			if writeErr != nil {
+				log.Println("Stopping this right now lol")
+				w.WriteHeader(http.StatusInternalServerError)
+			} else {
+				w.WriteHeader(http.StatusBadRequest)
+			}
+		}
+	} else {
+		validJson := struct {
+			Valid bool `json:"valid"`
+		}{Valid: true}
+		if encodedValidJson, encodingErr := json.Marshal(validJson); encodingErr != nil {
+			log.Println("Inception wtf!")
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			_, writeErr := w.Write(encodedValidJson)
+			if writeErr != nil {
+				log.Println("Stopping this right now lol")
+				w.WriteHeader(http.StatusInternalServerError)
+			} else {
+				w.WriteHeader(http.StatusOK)
+			}
+		}
+	}
+}
+
 func main() {
 	const port = 8080
 	appRouter := chi2.NewRouter()
@@ -70,6 +137,7 @@ func main() {
 	appRouter.Handle("/app", fsHandler)
 	apiRouter.Get("/healthz", readinessEndpoint)
 	apiRouter.HandleFunc("/reset", apiCfg.resetFsHitsHandler)
+	apiRouter.Post("/validate_chirp", validateChippy)
 	adminRouter.Get("/metrics", apiCfg.fsHitsHandler)
 	appRouter.Mount("/api", apiRouter)
 	appRouter.Mount("/admin", adminRouter)

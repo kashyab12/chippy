@@ -3,6 +3,7 @@ package database
 
 import (
 	"errors"
+	"github.com/kashyab12/chippy/chandler"
 	"os"
 	"sync"
 )
@@ -27,8 +28,10 @@ func NewDB(path string) (*DB, error) {
 	_, readError := os.ReadFile(path)
 	if readError != nil {
 		if errors.Is(readError, os.ErrNotExist) {
-			if writeErr := os.WriteFile(path, []byte(""), 666); writeErr != nil {
+			if chibeFile, writeErr := os.OpenFile(path, os.O_CREATE|os.O_EXCL, 0666); writeErr != nil {
 				return nil, writeErr
+			} else {
+				defer chandler.CloseIoReadCloserStream(chibeFile)
 			}
 		} else {
 			return nil, readError

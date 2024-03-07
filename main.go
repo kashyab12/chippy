@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	chi2 "github.com/go-chi/chi/v5"
+	"github.com/kashyab12/chippy/chippleware"
 	"io"
 	"log"
 	"net/http"
@@ -46,19 +47,6 @@ func (cfg *apiConfig) resetFsHitsHandler(writer http.ResponseWriter, _ *http.Req
 	log.Println("resetFsHandler ep hit!")
 	cfg.fsHits = 0
 	writer.WriteHeader(http.StatusOK)
-}
-
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		writer.Header().Set("Access-Control-Allow-Origin", "*")
-		writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
-		writer.Header().Set("Access-Control-Allow-Headers", "*")
-		if request.Method == "OPTIONS" {
-			writer.WriteHeader(http.StatusOK)
-			return
-		}
-		next.ServeHTTP(writer, request)
-	})
 }
 
 func readinessEndpoint(w http.ResponseWriter, _ *http.Request) {
@@ -138,6 +126,14 @@ func validateChippy(w http.ResponseWriter, r *http.Request) {
 func postChirp(w http.ResponseWriter, r *http.Request) {
 	jsonDecoder := json.NewDecoder(r.Body)
 	defer closeIoReadCloserStream(r.Body)
+	postBody := bodyJson{}
+	decodeErr := jsonDecoder.Decode(&postBody)
+	if decodeErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Println("Something went wrong trying to decode the postChirp JSON")
+	} else {
+
+	}
 
 }
 
@@ -160,7 +156,6 @@ func main() {
 	apiRouter := chi2.NewRouter()
 	apiRouter.Get("/healthz", readinessEndpoint)
 	apiRouter.HandleFunc("/reset", apiCfg.resetFsHitsHandler)
-	apiRouter.Post("/validate_chirp", validateChippy)
 	apiRouter.Post("/chirps", postChirp)
 	appRouter.Mount("/api", apiRouter)
 
@@ -168,7 +163,7 @@ func main() {
 	adminRouter.Get("/metrics", apiCfg.fsHitsHandler)
 	appRouter.Mount("/admin", adminRouter)
 
-	corsMux := corsMiddleware(appRouter)
+	corsMux := chippleware.CorsMiddleware(appRouter)
 	server := http.Server{
 		Handler: corsMux,
 		Addr:    fmt.Sprintf(":%v", port),

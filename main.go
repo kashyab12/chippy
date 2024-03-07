@@ -19,6 +19,10 @@ type errorJson struct {
 	ErrMsg string `json:"error"`
 }
 
+type bodyJson struct {
+	Body string `json:"body"`
+}
+
 func (cfg *apiConfig) metricsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		cfg.fsHits += 1
@@ -70,9 +74,6 @@ func readinessEndpoint(w http.ResponseWriter, _ *http.Request) {
 func validateChippy(w http.ResponseWriter, r *http.Request) {
 	log.Println("Validating Chippy!")
 	const MaxChippyLen = 140
-	type reqBody struct {
-		BodyParam string `json:"body"`
-	}
 	decoder := json.NewDecoder(r.Body)
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
@@ -80,7 +81,7 @@ func validateChippy(w http.ResponseWriter, r *http.Request) {
 
 		}
 	}(r.Body)
-	jsonBody := reqBody{}
+	jsonBody := bodyJson{}
 	if err := decoder.Decode(&jsonBody); err != nil {
 		log.Printf("Error decoding body JSON params!")
 		if encodedErrJson, encodingErr := json.Marshal(errorJson{ErrMsg: "Something went wrong"}); encodingErr != nil {
@@ -94,7 +95,7 @@ func validateChippy(w http.ResponseWriter, r *http.Request) {
 				log.Println("Stopping this right now lol")
 			}
 		}
-	} else if len(jsonBody.BodyParam) > MaxChippyLen {
+	} else if len(jsonBody.Body) > MaxChippyLen {
 		log.Printf("Chippy too damn long!")
 		if encodedErrJson, encodingErr := json.Marshal(errorJson{ErrMsg: "Chirp is too long"}); encodingErr != nil {
 			log.Println("Inception wtf!")
@@ -110,7 +111,7 @@ func validateChippy(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		badWords := []string{"kerfuffle", "sharbert", "fornax"}
-		splitString := strings.Split(jsonBody.BodyParam, " ")
+		splitString := strings.Split(jsonBody.Body, " ")
 		for idx, word := range splitString {
 			if slices.Contains(badWords, strings.ToLower(word)) {
 				splitString[idx] = "****"
@@ -135,8 +136,9 @@ func validateChippy(w http.ResponseWriter, r *http.Request) {
 }
 
 func postChirp(w http.ResponseWriter, r *http.Request) {
-	jsonDecoder = json.Decoder{r.Body}
+	jsonDecoder := json.NewDecoder(r.Body)
 	defer closeIoReadCloserStream(r.Body)
+
 }
 
 func closeIoReadCloserStream(stream io.ReadCloser) {

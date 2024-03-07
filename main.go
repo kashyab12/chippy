@@ -134,21 +134,30 @@ func validateChippy(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func postChirp(w http.ResponseWriter, r *http.Request) {
+
+}
+
 func main() {
 	const port = 8080
-	appRouter := chi2.NewRouter()
-	apiRouter := chi2.NewRouter()
-	adminRouter := chi2.NewRouter()
 	apiCfg := apiConfig{fsHits: 0}
 	fsHandler := apiCfg.metricsMiddleware(http.StripPrefix("/app", http.FileServer(http.Dir("./"))))
+
+	appRouter := chi2.NewRouter()
 	appRouter.Handle("/app/*", fsHandler)
 	appRouter.Handle("/app", fsHandler)
+
+	apiRouter := chi2.NewRouter()
 	apiRouter.Get("/healthz", readinessEndpoint)
 	apiRouter.HandleFunc("/reset", apiCfg.resetFsHitsHandler)
 	apiRouter.Post("/validate_chirp", validateChippy)
-	adminRouter.Get("/metrics", apiCfg.fsHitsHandler)
+	apiRouter.Post("/chirps", postChirp)
 	appRouter.Mount("/api", apiRouter)
+
+	adminRouter := chi2.NewRouter()
+	adminRouter.Get("/metrics", apiCfg.fsHitsHandler)
 	appRouter.Mount("/admin", adminRouter)
+
 	corsMux := corsMiddleware(appRouter)
 	server := http.Server{
 		Handler: corsMux,

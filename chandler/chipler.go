@@ -2,38 +2,42 @@ package chandler
 
 import (
 	"encoding/json"
-	"io"
 	"log"
 	"net/http"
 	"slices"
 	"strings"
 )
 
-func ValidateChippy(w http.ResponseWriter, r *http.Request) {
-	log.Println("Validating Chippy!")
-	const MaxChippyLen = 140
+func DecodeRequestBody(r *http.Request, bodyStructure *BodyJson) (*BodyJson, error) {
 	decoder := json.NewDecoder(r.Body)
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
+	defer CloseIoReadCloserStream(r.Body)
+	err := decoder.Decode(bodyStructure)
+	return bodyStructure, err
+}
 
+func EncodeErrorResponse(responseBody ErrorJson) ([]byte, error) {
+	encodedBody, encodingErr := json.Marshal(responseBody)
+	return encodedBody, encodingErr
+}
+
+func invalidChippyRequestStruct(w http.ResponseWriter) {
+	log.Printf("Error decoding body JSON params!")
+	if encodedErrJson, encodingErr := EncodeErrorResponse(ErrorJson{ErrMsg: "Something went wrong"}); encodingErr != nil {
+		log.Println("Inception wtf!")
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, writeErr := w.Write(encodedErrJson)
+		if writeErr != nil {
+			log.Println("Stopping this right now lol")
 		}
-	}(r.Body)
-	jsonBody := BodyJson{}
-	if err := decoder.Decode(&jsonBody); err != nil {
-		log.Printf("Error decoding body JSON params!")
-		if encodedErrJson, encodingErr := json.Marshal(ErrorJson{ErrMsg: "Something went wrong"}); encodingErr != nil {
-			log.Println("Inception wtf!")
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			_, writeErr := w.Write(encodedErrJson)
-			if writeErr != nil {
-				log.Println("Stopping this right now lol")
-			}
-		}
-	} else if len(jsonBody.Body) > MaxChippyLen {
+	}
+}
+
+func isChippyTooLong(chip string, w http.ResponseWriter) {
+	const MaxChippyLen = 140
+	if len(chip) > MaxChippyLen {
 		log.Printf("Chippy too damn long!")
 		if encodedErrJson, encodingErr := json.Marshal(ErrorJson{ErrMsg: "Chirp is too long"}); encodingErr != nil {
 			log.Println("Inception wtf!")
@@ -46,7 +50,15 @@ func ValidateChippy(w http.ResponseWriter, r *http.Request) {
 				log.Println("Stopping this right now lol")
 				w.WriteHeader(http.StatusInternalServerError)
 			}
-		}
+	}
+}
+
+func ValidateChippy(w http.ResponseWriter, r *http.Request) {
+	log.Println("Validating Chippy!")
+
+	if jsonBody, decodeErr := DecodeRequestBody(r, &BodyJson{}); decodeErr != nil {
+		invalidChippyRequestStruct(w)
+	} else if
 	} else {
 		badWords := []string{"kerfuffle", "sharbert", "fornax"}
 		splitString := strings.Split(jsonBody.Body, " ")

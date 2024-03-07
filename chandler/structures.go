@@ -18,6 +18,10 @@ type BodyJson struct {
 	Body string `json:"body"`
 }
 
+type RequestBody interface {
+	BodyJson
+}
+
 func GetAppRouter(config *ApiConfig) *chi2.Mux {
 	fsHandler := config.MetricsMiddleware(http.StripPrefix("/app", http.FileServer(http.Dir("./"))))
 	appRouter := chi2.NewRouter()

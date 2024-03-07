@@ -1,3 +1,4 @@
+// Package database chibe the db :D
 package database
 
 import (

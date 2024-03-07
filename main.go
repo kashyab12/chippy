@@ -135,7 +135,15 @@ func validateChippy(w http.ResponseWriter, r *http.Request) {
 }
 
 func postChirp(w http.ResponseWriter, r *http.Request) {
+	jsonDecoder = json.Decoder{r.Body}
+	defer closeIoReadCloserStream(r.Body)
+}
 
+func closeIoReadCloserStream(stream io.ReadCloser) {
+	err := stream.Close()
+	if err != nil {
+		return
+	}
 }
 
 func main() {

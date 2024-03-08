@@ -2,6 +2,7 @@ package chandler
 
 import (
 	"encoding/json"
+	"github.com/kashyab12/chippy/internal/database"
 	"log"
 	"net/http"
 )
@@ -61,6 +62,7 @@ func chippyTooLong(w http.ResponseWriter) {
 //}
 
 func PostChirp(w http.ResponseWriter, r *http.Request) {
+	const DatabaseFile = "./database.json"
 	log.Println("Validating Chippy!")
 	const MaxChippyLen = 140
 	if jsonBody, decodeErr := DecodeRequestBody(r, &BodyJson{}); decodeErr != nil {
@@ -68,6 +70,23 @@ func PostChirp(w http.ResponseWriter, r *http.Request) {
 	} else if len(jsonBody.Body) > MaxChippyLen {
 		chippyTooLong(w)
 	} else {
-		// TODO: Assign UID (save within DB) and return response
+		if chibeDb, newDbErr := database.NewDB(DatabaseFile); newDbErr != nil {
+			log.Printf("Error while creating the database: %v\n", newDbErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if chirp, createErr := chibeDb.CreateChirp(jsonBody.Body); createErr != nil {
+			log.Printf("Error while creating the chirp: %v\n", createErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if rawJson, encodeErr := json.Marshal(chirp); encodeErr != nil {
+			log.Printf("Error while encoding the chirp to raw json %v: %v\n", rawJson, encodeErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			log.Printf("Error while encoding the chirp to raw json %v: %v\n", rawJson, encodeErr)
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			_, err := w.Write(rawJson)
+			if err != nil {
+				return
+			}
+		}
 	}
 }

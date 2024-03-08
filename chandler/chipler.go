@@ -50,17 +50,6 @@ func chippyTooLong(w http.ResponseWriter) {
 	}
 }
 
-//func unprofaneChip(chip string) string {
-//	badWords := []string{"kerfuffle", "sharbert", "fornax"}
-//	splitString := strings.Split(chip, " ")
-//	for idx, word := range splitString {
-//		if slices.Contains(badWords, strings.ToLower(word)) {
-//			splitString[idx] = "****"
-//		}
-//	}
-//	return strings.Join(splitString, " ")
-//}
-
 func PostChirp(w http.ResponseWriter, r *http.Request) {
 	const DatabaseFile = "./database.json"
 	log.Println("Validating Chippy!")

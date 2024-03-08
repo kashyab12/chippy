@@ -38,6 +38,22 @@ func NewDB(path string) (*DB, error) {
 
 // CreateChirp creates a new chirp and saves it to disk
 func (chibe *DB) CreateChirp(body string) (Chirp, error) {
+	var newChirp Chirp
+	if chirps, getChirpsErr := chibe.GetChirps(); getChirpsErr != nil {
+		return newChirp, getChirpsErr
+	} else {
+		newChirpId := 1
+		if len(chirps) > 0 {
+			highestUid := chirps[len(chirps)-1].Uid
+			newChirpId = highestUid + 1
+		}
+		newChirp = Chirp{
+			Uid:  newChirpId,
+			Body: body,
+		}
+
+	}
+	return newChirp, nil
 }
 
 // loadDB Read chibe into memory
@@ -59,7 +75,16 @@ func (chibe *DB) loadDB() (DBStructure, error) {
 
 // writeDB writes the database file to disk
 func (chibe *DB) writeDB(dbStructure DBStructure) error {
-
+	chibe.mux.Lock()
+	defer chibe.mux.Unlock()
+	if rawData, encodeErr := json.Marshal(dbStructure); encodeErr != nil {
+		return encodeErr
+	} else {
+		if writeErr := os.WriteFile(chibe.path, rawData, 0666); writeErr != nil {
+			return writeErr
+		}
+	}
+	return nil
 }
 
 // ensureDB creates a new database file if it doesn't exist

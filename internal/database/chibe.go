@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/kashyab12/chippy/chandler"
+	"io"
 	"log"
 	"os"
 	"slices"
@@ -38,8 +39,6 @@ func NewDB(path string) (*DB, error) {
 
 // CreateChirp creates a new chirp and saves it to disk
 func (chibe *DB) CreateChirp(body string) (Chirp, error) {
-	chibe.mux.Lock()
-	defer chibe.mux.Unlock()
 	var newChirp Chirp
 	if chirps, getChirpsErr := chibe.GetChirps(); getChirpsErr != nil {
 		return newChirp, getChirpsErr
@@ -75,8 +74,13 @@ func (chibe *DB) loadDB() (DBStructure, error) {
 		defer chandler.CloseIoReadCloserStream(jsonFile)
 		jsonDecoder := json.NewDecoder(jsonFile)
 		if decodeErr := jsonDecoder.Decode(&chibeTheDb); decodeErr != nil {
-			log.Fatalf("Error while decoding Chibe the DB :(")
-			return chibeTheDb, decodeErr
+			// Case when chibe is empty
+			if errors.Is(decodeErr, io.EOF) {
+				return DBStructure{map[int]Chirp{}}, nil
+			} else {
+				log.Fatalf("Error while decoding Chibe the DB :(")
+				return chibeTheDb, decodeErr
+			}
 		}
 	}
 	return chibeTheDb, nil
@@ -117,13 +121,13 @@ func (chibe *DB) GetChirps() ([]Chirp, error) {
 	var chirps []Chirp
 	if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
 		return nil, loadErr
-	} else {
+	} else if len(dbStruct.Chirps) > 0 {
 		chibe.mux.RLock()
 		defer chibe.mux.RUnlock()
 		for _, chirp := range dbStruct.Chirps {
 			chirps = append(chirps, chirp)
 		}
+		slices.SortFunc(chirps, func(a, b Chirp) int { return cmp.Compare(a.Uid, b.Uid) })
 	}
-	slices.SortFunc(chirps, func(a, b Chirp) int { return cmp.Compare(a.Uid, b.Uid) })
 	return chirps, nil
 }

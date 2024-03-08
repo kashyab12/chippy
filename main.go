@@ -9,7 +9,7 @@ import (
 
 func main() {
 	const port = 8080
-	database.TestNewDb()
+	database.TestCreateChirp()
 	config := chandler.ApiConfig{FsHits: 0}
 	appRouter := chandler.GetAppRouter(&config)
 	apiRouter := chandler.GetApiRouter(&config)

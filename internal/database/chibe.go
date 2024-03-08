@@ -47,11 +47,18 @@ func (chibe *DB) CreateChirp(body string) (Chirp, error) {
 			highestUid := chirps[len(chirps)-1].Uid
 			newChirpId = highestUid + 1
 		}
-		newChirp = Chirp{
-			Uid:  newChirpId,
-			Body: body,
+		if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
+			return newChirp, loadErr
+		} else {
+			newChirp = Chirp{
+				Uid:  newChirpId,
+				Body: body,
+			}
+			dbStruct.Chirps[newChirp.Uid] = newChirp
+			if writeErr := chibe.writeDB(dbStruct); writeErr != nil {
+				return newChirp, writeErr
+			}
 		}
-
 	}
 	return newChirp, nil
 }

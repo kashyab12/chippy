@@ -69,8 +69,8 @@ func PostChirp(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error while encoding the chirp to raw json %v: %v\n", rawJson, encodeErr)
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
-			log.Printf("Error while encoding the chirp to raw json %v: %v\n", rawJson, encodeErr)
-			w.WriteHeader(http.StatusOK)
+			log.Println("Successfully encoded chirp and saved within CHIBE")
+			w.WriteHeader(http.StatusCreated)
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			_, err := w.Write(rawJson)
 			if err != nil {

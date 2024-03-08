@@ -2,11 +2,13 @@
 package database
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"github.com/kashyab12/chippy/chandler"
 	"log"
 	"os"
+	"slices"
 	"sync"
 )
 
@@ -78,5 +80,16 @@ func (chibe *DB) ensureDB() error {
 
 // GetChirps returns all chirps in the database
 func (chibe *DB) GetChirps() ([]Chirp, error) {
-
+	var chirps []Chirp
+	if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
+		return nil, loadErr
+	} else {
+		chibe.mux.RLock()
+		defer chibe.mux.RUnlock()
+		for _, chirp := range dbStruct.Chirps {
+			chirps = append(chirps, chirp)
+		}
+	}
+	slices.SortFunc(chirps, func(a, b Chirp) int { return cmp.Compare(a.Uid, b.Uid) })
+	return chirps, nil
 }

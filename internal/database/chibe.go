@@ -38,6 +38,8 @@ func NewDB(path string) (*DB, error) {
 
 // CreateChirp creates a new chirp and saves it to disk
 func (chibe *DB) CreateChirp(body string) (Chirp, error) {
+	chibe.mux.Lock()
+	defer chibe.mux.Unlock()
 	var newChirp Chirp
 	if chirps, getChirpsErr := chibe.GetChirps(); getChirpsErr != nil {
 		return newChirp, getChirpsErr

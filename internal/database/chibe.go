@@ -12,6 +12,8 @@ import (
 	"sync"
 )
 
+const DatabaseFile = "./database.json"
+
 type DB struct {
 	path string
 	mux  sync.RWMutex

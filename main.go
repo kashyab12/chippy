@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"github.com/kashyab12/chippy/chandler"
+	"github.com/kashyab12/chippy/internal/database"
 	"net/http"
 )
 
 func main() {
 	const port = 8080
+	database.TestNewDb()
 	config := chandler.ApiConfig{FsHits: 0}
 	appRouter := chandler.GetAppRouter(&config)
 	apiRouter := chandler.GetApiRouter(&config)

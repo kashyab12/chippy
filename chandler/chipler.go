@@ -79,3 +79,7 @@ func PostChirp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
+
+//func GetChirp(w http.ResponseWriter, r *http.Request) {
+//
+//}

@@ -5,7 +5,6 @@ import (
 	"cmp"
 	"encoding/json"
 	"errors"
-	"github.com/kashyab12/chippy/chandler"
 	"io"
 	"log"
 	"os"
@@ -71,7 +70,7 @@ func (chibe *DB) loadDB() (DBStructure, error) {
 		log.Fatalf("Error while trying to open file %v", chibe.path)
 		return chibeTheDb, openErr
 	} else {
-		defer chandler.CloseIoReadCloserStream(jsonFile)
+		defer closeDbFile(jsonFile)
 		jsonDecoder := json.NewDecoder(jsonFile)
 		if decodeErr := jsonDecoder.Decode(&chibeTheDb); decodeErr != nil {
 			// Case when chibe is empty
@@ -107,7 +106,7 @@ func (chibe *DB) ensureDB() error {
 			if chibeFile, writeErr := os.OpenFile(chibe.path, os.O_CREATE|os.O_EXCL, 0666); writeErr != nil {
 				return writeErr
 			} else {
-				defer chandler.CloseIoReadCloserStream(chibeFile)
+				defer closeDbFile(chibeFile)
 			}
 		} else {
 			return readError
@@ -130,4 +129,10 @@ func (chibe *DB) GetChirps() ([]Chirp, error) {
 		slices.SortFunc(chirps, func(a, b Chirp) int { return cmp.Compare(a.Uid, b.Uid) })
 	}
 	return chirps, nil
+}
+
+func closeDbFile(file io.ReadCloser) {
+	if closeErr := file.Close(); closeErr != nil {
+		log.Fatalf("Error with closing file!")
+	}
 }

@@ -34,6 +34,7 @@ func GetApiRouter(config *ApiConfig) *chi2.Mux {
 	apiRouter := chi2.NewRouter()
 	apiRouter.Get("/healthz", readinessEndpoint)
 	apiRouter.HandleFunc("/reset", config.resetFsHitsHandler)
+	apiRouter.Get("/chirps", GetChirp)
 	apiRouter.Post("/chirps", PostChirp)
 	return apiRouter
 }

@@ -12,7 +12,7 @@ import (
 	"sync"
 )
 
-const DatabaseFile = "./database.json"
+const ChibeFile = "./database.json"
 
 type DB struct {
 	path string

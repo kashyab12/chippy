@@ -51,7 +51,6 @@ func chippyTooLong(w http.ResponseWriter) {
 }
 
 func PostChirp(w http.ResponseWriter, r *http.Request) {
-	const DatabaseFile = "./database.json"
 	log.Println("Validating Chippy!")
 	const MaxChippyLen = 140
 	if jsonBody, decodeErr := DecodeRequestBody(r, &BodyJson{}); decodeErr != nil {
@@ -59,7 +58,7 @@ func PostChirp(w http.ResponseWriter, r *http.Request) {
 	} else if len(jsonBody.Body) > MaxChippyLen {
 		chippyTooLong(w)
 	} else {
-		if chibeDb, newDbErr := database.NewDB(DatabaseFile); newDbErr != nil {
+		if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
 			log.Printf("Error while creating the database: %v\n", newDbErr)
 			w.WriteHeader(http.StatusInternalServerError)
 		} else if chirp, createErr := chibeDb.CreateChirp(jsonBody.Body); createErr != nil {
@@ -80,6 +79,22 @@ func PostChirp(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//func GetChirp(w http.ResponseWriter, r *http.Request) {
-//
-//}
+func GetChirp(w http.ResponseWriter, _ *http.Request) {
+	if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
+		log.Printf("Error while creating the database: %v\n", newDbErr)
+		w.WriteHeader(http.StatusInternalServerError)
+	} else if chirps, getChirpsErr := chibeDb.GetChirps(); getChirpsErr != nil {
+		log.Printf("Error while obtaining chibe entries: %v\n", getChirpsErr)
+		w.WriteHeader(http.StatusInternalServerError)
+	} else if rawJsonList, encodingErr := json.Marshal(chirps); encodingErr != nil {
+		log.Printf("Error while encoding chibe entries: %v\n", encodingErr)
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_, err := w.Write(rawJsonList)
+		if err != nil {
+			return
+		}
+	}
+}

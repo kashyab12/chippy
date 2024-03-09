@@ -21,11 +21,17 @@ type DB struct {
 
 type DBStructure struct {
 	Chirps map[int]Chirp `json:"chirps"`
+	Users  map[int]User  `json:"users"`
 }
 
 type Chirp struct {
 	Uid  int    `json:"id"`
 	Body string `json:"body"`
+}
+
+type User struct {
+	Uid   int    `json:"id"`
+	Email string `json:"email"`
 }
 
 // NewDB creates a new database connection
@@ -131,6 +137,10 @@ func (chibe *DB) GetChirps() ([]Chirp, error) {
 		slices.SortFunc(chirps, func(a, b Chirp) int { return cmp.Compare(a.Uid, b.Uid) })
 	}
 	return chirps, nil
+}
+
+func (chibe *DB) GetUsers() ([]User, error) {
+
 }
 
 func closeDbFile(file io.ReadCloser) {

@@ -18,6 +18,10 @@ type BodyJson struct {
 	Body string `json:"body"`
 }
 
+type UserJson struct {
+	Email string `json:"email"`
+}
+
 type RequestBody interface {
 	BodyJson
 }

@@ -5,6 +5,8 @@ import (
 	"github.com/kashyab12/chippy/internal/database"
 	"log"
 	"net/http"
+	"slices"
+	"strconv"
 )
 
 func DecodeRequestBody(r *http.Request, bodyStructure *BodyJson) (*BodyJson, error) {
@@ -79,7 +81,7 @@ func PostChirp(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetChirp(w http.ResponseWriter, _ *http.Request) {
+func GetChirp(w http.ResponseWriter, r *http.Request) {
 	if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
 		log.Printf("Error while creating the database: %v\n", newDbErr)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -93,6 +95,37 @@ func GetChirp(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		_, err := w.Write(rawJsonList)
+		if err != nil {
+			return
+		}
+	}
+}
+
+func GetSingleChirp(w http.ResponseWriter, r *http.Request) {
+	if targetChirpIdStr := r.PathValue("chirpID"); len(targetChirpIdStr) < 1 {
+		log.Printf("Unable to match to chirp id based on provided path\n")
+		w.WriteHeader(http.StatusInternalServerError)
+	} else if targetChirpId, convErr := strconv.Atoi(targetChirpIdStr); convErr != nil {
+		log.Printf("Conversion error of chirp id from string to integer\n")
+		w.WriteHeader(http.StatusInternalServerError)
+	} else if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
+		log.Printf("Error while creating the database: %v\n", newDbErr)
+		w.WriteHeader(http.StatusInternalServerError)
+	} else if chirps, getChirpsErr := chibeDb.GetChirps(); getChirpsErr != nil {
+		log.Printf("Error while obtaining chibe entries: %v\n", getChirpsErr)
+		w.WriteHeader(http.StatusInternalServerError)
+	} else if targetIdx := slices.IndexFunc(chirps, func(ch database.Chirp) bool {
+		return ch.Uid == targetChirpId
+	}); targetIdx == -1 {
+		log.Printf("Chirp ID not present within chibe the db\n")
+		w.WriteHeader(http.StatusNotFound)
+	} else if rawData, encodingErr := json.Marshal(chirps[targetIdx]); encodingErr != nil {
+		log.Printf("Error while encoding target chibe\n")
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_, err := w.Write(rawData)
 		if err != nil {
 			return
 		}

@@ -81,7 +81,7 @@ func PostChirp(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetChirp(w http.ResponseWriter, r *http.Request) {
+func GetChirp(w http.ResponseWriter, _ *http.Request) {
 	if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
 		log.Printf("Error while creating the database: %v\n", newDbErr)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -132,21 +132,21 @@ func GetSingleChirp(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func postUsers(w http.ResponseWriter, r *http.Request) {
+func PostUsers(w http.ResponseWriter, r *http.Request) {
 	if jsonBody, decodeErr := DecodeRequestBody(r, &UserJson{}); decodeErr != nil {
 		invalidChippyRequestStruct(w)
 	} else {
 		if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
 			log.Printf("Error while creating the database: %v\n", newDbErr)
 			w.WriteHeader(http.StatusInternalServerError)
-		} else if chirp, createErr := chibeDb.CreateChirp(jsonBody.Body); createErr != nil {
-			log.Printf("Error while creating the chirp: %v\n", createErr)
+		} else if user, createErr := chibeDb.CreateUser(jsonBody.Email); createErr != nil {
+			log.Printf("Error while creating the user: %v\n", createErr)
 			w.WriteHeader(http.StatusInternalServerError)
-		} else if rawJson, encodeErr := json.Marshal(chirp); encodeErr != nil {
-			log.Printf("Error while encoding the chirp to raw json %v: %v\n", rawJson, encodeErr)
+		} else if rawJson, encodeErr := json.Marshal(user); encodeErr != nil {
+			log.Printf("Error while encoding the user to raw json %v: %v\n", rawJson, encodeErr)
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
-			log.Println("Successfully encoded chirp and saved within CHIBE")
+			log.Println("Successfully encoded user and saved within CHIBE")
 			w.WriteHeader(http.StatusCreated)
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			_, err := w.Write(rawJson)
@@ -154,4 +154,5 @@ func postUsers(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+	}
 }

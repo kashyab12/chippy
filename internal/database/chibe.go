@@ -83,7 +83,7 @@ func (chibe *DB) loadDB() (DBStructure, error) {
 		if decodeErr := jsonDecoder.Decode(&chibeTheDb); decodeErr != nil {
 			// Case when chibe is empty
 			if errors.Is(decodeErr, io.EOF) {
-				return DBStructure{map[int]Chirp{}}, nil
+				return DBStructure{map[int]Chirp{}, map[int]User{}}, nil
 			} else {
 				log.Fatalf("Error while decoding Chibe the DB :(")
 				return chibeTheDb, decodeErr
@@ -139,8 +139,47 @@ func (chibe *DB) GetChirps() ([]Chirp, error) {
 	return chirps, nil
 }
 
+// GetUsers returns all users in the database
 func (chibe *DB) GetUsers() ([]User, error) {
+	var users []User
+	if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
+		return nil, loadErr
+	} else if len(dbStruct.Users) > 0 {
+		chibe.mux.RLock()
+		defer chibe.mux.RUnlock()
+		for _, user := range dbStruct.Users {
+			users = append(users, user)
+		}
+		slices.SortFunc(users, func(a, b User) int { return cmp.Compare(a.Uid, b.Uid) })
+	}
+	return users, nil
+}
 
+// CreateUser creates a new user and saves it to disk
+func (chibe *DB) CreateUser(email string) (User, error) {
+	var newUser User
+	if users, getUserErr := chibe.GetUsers(); getUserErr != nil {
+		return newUser, getUserErr
+	} else {
+		newUserId := 1
+		if len(users) > 0 {
+			highestUid := users[len(users)-1].Uid
+			newUserId = highestUid + 1
+		}
+		if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
+			return newUser, loadErr
+		} else {
+			newUser = User{
+				Uid:   newUserId,
+				Email: email,
+			}
+			dbStruct.Users[newUser.Uid] = newUser
+			if writeErr := chibe.writeDB(dbStruct); writeErr != nil {
+				return newUser, writeErr
+			}
+		}
+	}
+	return newUser, nil
 }
 
 func closeDbFile(file io.ReadCloser) {

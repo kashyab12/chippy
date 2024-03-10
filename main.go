@@ -1,12 +1,26 @@
 package main
 
 import (
+	"errors"
+	"flag"
 	"fmt"
 	"github.com/kashyab12/chippy/chandler"
+	"github.com/kashyab12/chippy/internal/database"
+	"io/fs"
+	"log"
 	"net/http"
+	"os"
 )
 
 func main() {
+	dbg := flag.Bool("debug", false, "Enable debug mode")
+	if flag.Parse(); *dbg {
+		if removeErr := os.Remove(database.ChibeFile); removeErr != nil && !errors.Is(removeErr, fs.ErrNotExist) {
+			log.Fatalf("Could not remove %v\n", database.ChibeFile)
+		} else {
+			log.Printf("New %v will be instantiated\n", database.ChibeFile)
+		}
+	}
 	const port = 8080
 	config := chandler.ApiConfig{FsHits: 0}
 	appRouter := chandler.GetAppRouter(&config)

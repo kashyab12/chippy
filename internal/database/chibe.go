@@ -193,6 +193,25 @@ func (chibe *DB) CreateUser(email, password string) (User, error) {
 	return newUser, nil
 }
 
+func (chibe *DB) AuthUser(email, password string) (User, error) {
+	var targetUser User
+	if users, getUserErr := chibe.GetUsers(); getUserErr != nil {
+		return targetUser, getUserErr
+	} else if presentIdx := slices.IndexFunc(users, func(us User) bool {
+		return us.Email == email
+	}); presentIdx == -1 {
+		log.Printf("user does not exist within chibe, need to create account!", email)
+		return targetUser, errors.New("user not present")
+	} else {
+		// Check whether password matches
+		targetUser = users[presentIdx]
+		if matchErr := bcrypt.CompareHashAndPassword([]byte(targetUser.Password), []byte(password)); matchErr != nil {
+
+		}
+	}
+	return targetUser, nil
+}
+
 func closeDbFile(file io.ReadCloser) {
 	if closeErr := file.Close(); closeErr != nil {
 		log.Fatalf("Error with closing file!")

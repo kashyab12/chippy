@@ -162,6 +162,11 @@ func (chibe *DB) CreateUser(email, password string) (User, error) {
 	var newUser User
 	if users, getUserErr := chibe.GetUsers(); getUserErr != nil {
 		return newUser, getUserErr
+	} else if presentIdx := slices.IndexFunc(users, func(us User) bool {
+		return us.Email == email
+	}); presentIdx != -1 {
+		log.Printf("user %v already exists\n", email)
+		return newUser, errors.New("the mentioned user already exists")
 	} else {
 		newUserId := 1
 		if len(users) > 0 {

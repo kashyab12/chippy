@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/joho/godotenv"
 	"github.com/kashyab12/chippy/chandler"
 	"github.com/kashyab12/chippy/internal/database"
 	"io/fs"
@@ -13,6 +14,10 @@ import (
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		return
+	}
 	dbg := flag.Bool("debug", false, "Enable debug mode")
 	if flag.Parse(); *dbg {
 		if removeErr := os.Remove(database.ChibeFile); removeErr != nil && !errors.Is(removeErr, fs.ErrNotExist) {

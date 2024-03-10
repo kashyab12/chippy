@@ -48,6 +48,7 @@ func GetApiRouter(config *ApiConfig) *chi2.Mux {
 	apiRouter.Get("/chirps/{chirpID}", GetSingleChirp)
 	apiRouter.Post("/chirps", PostChirp)
 	apiRouter.Post("/users", PostUsers)
+	apiRouter.Post("/login", PostLogin)
 	return apiRouter
 }
 

@@ -200,13 +200,13 @@ func (chibe *DB) AuthUser(email, password string) (User, error) {
 	} else if presentIdx := slices.IndexFunc(users, func(us User) bool {
 		return us.Email == email
 	}); presentIdx == -1 {
-		log.Printf("user does not exist within chibe, need to create account!", email)
+		log.Printf("user %v does not exist within chibe, need to create account!", email)
 		return targetUser, errors.New("user not present")
 	} else {
 		// Check whether password matches
 		targetUser = users[presentIdx]
 		if matchErr := bcrypt.CompareHashAndPassword([]byte(targetUser.Password), []byte(password)); matchErr != nil {
-
+			return targetUser, errors.New("password does not match")
 		}
 	}
 	return targetUser, nil

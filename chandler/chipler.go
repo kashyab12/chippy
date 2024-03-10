@@ -161,5 +161,33 @@ func PostUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostLogin(w http.ResponseWriter, r *http.Request) {
-
+	if jsonBody, decodeErr := DecodeRequestBody(r, &UserJson{}); decodeErr != nil {
+		invalidChippyRequestStruct(w)
+	} else {
+		if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
+			log.Printf("Error while creating the database: %v\n", newDbErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if presentUser, userError := chibeDb.AuthUser(jsonBody.Email, jsonBody.Password); userError != nil {
+			if userError.Error() == "password does not match" {
+				log.Println("The password provided does not match the stored password within chibe!")
+				w.WriteHeader(http.StatusUnauthorized)
+			} else {
+				log.Println(userError)
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		} else if rawJson, encodeErr := json.Marshal(UserReturnJson{
+			ID:    presentUser.Uid,
+			Email: presentUser.Email,
+		}); encodeErr != nil {
+			log.Printf("Error while encoding the user to raw json %v: %v\n", rawJson, encodeErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			_, err := w.Write(rawJson)
+			if err != nil {
+				return
+			}
+		}
+	}
 }

@@ -14,8 +14,7 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
+	if envVarLoadErr := godotenv.Load(); envVarLoadErr != nil {
 		return
 	}
 	dbg := flag.Bool("debug", false, "Enable debug mode")

@@ -19,7 +19,8 @@ type BodyJson struct {
 }
 
 type UserJson struct {
-	Email string `json:"email"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type RequestBody interface {

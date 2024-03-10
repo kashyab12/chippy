@@ -7,7 +7,8 @@ import (
 )
 
 type ApiConfig struct {
-	FsHits int
+	FsHits    int
+	JwtSecret string
 }
 
 type ErrorJson struct {

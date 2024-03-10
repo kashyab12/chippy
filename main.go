@@ -26,7 +26,7 @@ func main() {
 		}
 	}
 	const port = 8080
-	config := chandler.ApiConfig{FsHits: 0}
+	config := chandler.ApiConfig{FsHits: 0, JwtSecret: os.Getenv("JWT_SECRET")}
 	appRouter := chandler.GetAppRouter(&config)
 	apiRouter := chandler.GetApiRouter(&config)
 	adminRouter := chandler.GetAdminRouter(&config)

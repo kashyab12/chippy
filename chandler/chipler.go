@@ -139,10 +139,13 @@ func PostUsers(w http.ResponseWriter, r *http.Request) {
 		if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
 			log.Printf("Error while creating the database: %v\n", newDbErr)
 			w.WriteHeader(http.StatusInternalServerError)
-		} else if user, createErr := chibeDb.CreateUser(jsonBody.Email); createErr != nil {
+		} else if user, createErr := chibeDb.CreateUser(jsonBody.Email, jsonBody.Password); createErr != nil {
 			log.Printf("Error while creating the user: %v\n", createErr)
 			w.WriteHeader(http.StatusInternalServerError)
-		} else if rawJson, encodeErr := json.Marshal(user); encodeErr != nil {
+		} else if rawJson, encodeErr := json.Marshal(UserReturnJson{
+			ID:    user.Uid,
+			Email: user.Email,
+		}); encodeErr != nil {
 			log.Printf("Error while encoding the user to raw json %v: %v\n", rawJson, encodeErr)
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {

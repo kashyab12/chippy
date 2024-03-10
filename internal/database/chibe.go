@@ -5,6 +5,7 @@ import (
 	"cmp"
 	"encoding/json"
 	"errors"
+	"golang.org/x/crypto/bcrypt"
 	"io"
 	"log"
 	"os"
@@ -30,8 +31,9 @@ type Chirp struct {
 }
 
 type User struct {
-	Uid   int    `json:"id"`
-	Email string `json:"email"`
+	Uid      int    `json:"id"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 // NewDB creates a new database connection
@@ -156,7 +158,7 @@ func (chibe *DB) GetUsers() ([]User, error) {
 }
 
 // CreateUser creates a new user and saves it to disk
-func (chibe *DB) CreateUser(email string) (User, error) {
+func (chibe *DB) CreateUser(email, password string) (User, error) {
 	var newUser User
 	if users, getUserErr := chibe.GetUsers(); getUserErr != nil {
 		return newUser, getUserErr
@@ -168,10 +170,14 @@ func (chibe *DB) CreateUser(email string) (User, error) {
 		}
 		if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
 			return newUser, loadErr
+		} else if encryptedPass, encryptErr := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost); encryptErr != nil {
+			log.Printf("Error encrypting the password of %v\n", email)
+			return newUser, encryptErr
 		} else {
 			newUser = User{
-				Uid:   newUserId,
-				Email: email,
+				Uid:      newUserId,
+				Email:    email,
+				Password: string(encryptedPass),
 			}
 			dbStruct.Users[newUser.Uid] = newUser
 			if writeErr := chibe.writeDB(dbStruct); writeErr != nil {

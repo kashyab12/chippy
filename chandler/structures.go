@@ -23,6 +23,11 @@ type UserJson struct {
 	Password string `json:"password"`
 }
 
+type UserReturnJson struct {
+	ID    int    `json:"id"`
+	Email string `json:"email"`
+}
+
 type RequestBody interface {
 	BodyJson
 }

@@ -22,7 +22,7 @@ type BodyJson struct {
 type UserJson struct {
 	Email            string `json:"email"`
 	Password         string `json:"password"`
-	ExpiresInSeconds int    `json:"expires_in_seconds"`
+	ExpiresInSeconds int    `json:"expires_in_seconds,omitempty"`
 }
 
 type UserReturnJson struct {

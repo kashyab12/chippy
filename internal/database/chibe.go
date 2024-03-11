@@ -236,6 +236,7 @@ func (chibe *DB) UpdateUser(targetUserId int, updatedEmail, updatedPassword stri
 			}
 		}
 	}
+	return updatedUser, nil
 }
 
 func closeDbFile(file io.ReadCloser) {

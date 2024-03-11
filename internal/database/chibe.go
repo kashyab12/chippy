@@ -212,6 +212,32 @@ func (chibe *DB) AuthUser(email, password string) (User, error) {
 	return targetUser, nil
 }
 
+func (chibe *DB) UpdateUser(targetUserId int, updatedEmail, updatedPassword string) (User, error) {
+	var updatedUser User
+	if users, getUserErr := chibe.GetUsers(); getUserErr != nil {
+		return updatedUser, getUserErr
+	} else if presentIdx := slices.IndexFunc(users, func(us User) bool {
+		return us.Uid == targetUserId
+	}); presentIdx == -1 {
+		log.Printf("user with id %v does not exist within chibe\n", targetUserId)
+		return updatedUser, errors.New("user does not exist")
+	} else {
+		updatedUser = User{
+			Uid:      targetUserId,
+			Email:    updatedEmail,
+			Password: updatedPassword,
+		}
+		if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
+			return updatedUser, loadErr
+		} else {
+			dbStruct.Users[targetUserId] = updatedUser
+			if writeErr := chibe.writeDB(dbStruct); writeErr != nil {
+				return updatedUser, writeErr
+			}
+		}
+	}
+}
+
 func closeDbFile(file io.ReadCloser) {
 	if closeErr := file.Close(); closeErr != nil {
 		log.Fatalf("Error with closing file!")

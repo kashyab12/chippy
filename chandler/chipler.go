@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -138,6 +139,15 @@ func PostUsers(w http.ResponseWriter, r *http.Request) {
 	if jsonBody, decodeErr := DecodeRequestBody(r, &UserJson{}); decodeErr != nil {
 		invalidChippyRequestStruct(w)
 	} else {
+		// Get Auth Headers
+		if r.Header.Get("Authorization") == "" {
+			log.Println("Authorization header not provided")
+			w.WriteHeader(http.StatusUnauthorized)
+		} else {
+			extractedJwtToken := strings.Split(r.Header.Get("Authorization"), "Bearer ")[0]
+			jwt.ParseWithClaims(extractedJwtToken)
+		}
+
 		if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
 			log.Printf("Error while creating the database: %v\n", newDbErr)
 			w.WriteHeader(http.StatusInternalServerError)

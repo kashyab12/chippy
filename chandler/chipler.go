@@ -139,15 +139,6 @@ func PostUsers(w http.ResponseWriter, r *http.Request) {
 	if jsonBody, decodeErr := DecodeRequestBody(r, &UserJson{}); decodeErr != nil {
 		invalidChippyRequestStruct(w)
 	} else {
-		// Get Auth Headers
-		if r.Header.Get("Authorization") == "" {
-			log.Println("Authorization header not provided")
-			w.WriteHeader(http.StatusUnauthorized)
-		} else {
-			extractedJwtToken := strings.Split(r.Header.Get("Authorization"), "Bearer ")[0]
-			jwt.ParseWithClaims(extractedJwtToken)
-		}
-
 		if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
 			log.Printf("Error while creating the database: %v\n", newDbErr)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -163,6 +154,50 @@ func PostUsers(w http.ResponseWriter, r *http.Request) {
 		} else {
 			log.Println("Successfully encoded user and saved within CHIBE")
 			w.WriteHeader(http.StatusCreated)
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			_, err := w.Write(rawJson)
+			if err != nil {
+				return
+			}
+		}
+	}
+}
+
+func (config *ApiConfig) PutUser(w http.ResponseWriter, r *http.Request) {
+	// Get Auth Headers
+	if r.Header.Get("Authorization") == "" {
+		log.Println("Authorization header not provided")
+		w.WriteHeader(http.StatusUnauthorized)
+	} else {
+		extractedJwtToken := strings.Split(r.Header.Get("Authorization"), "Bearer ")[0]
+		registeredClaims := jwt.RegisteredClaims{}
+		if token, parseErr := jwt.ParseWithClaims(extractedJwtToken, &registeredClaims, func(token *jwt.Token) (interface{}, error) {
+			return config.JwtSecret, nil
+		}); parseErr != nil {
+			log.Println("Invalid JWT, token is invalid or expired.")
+			w.WriteHeader(http.StatusUnauthorized)
+		} else if userId, subjectErr := token.Claims.GetSubject(); subjectErr != nil {
+			log.Println("Unable to extract user id via the subject info within JWT")
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
+			log.Printf("Error while creating the database: %v\n", newDbErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if jsonBody, decodeErr := DecodeRequestBody(r, &UserJson{}); decodeErr != nil {
+			invalidChippyRequestStruct(w)
+		} else if userIdInt, convErr := strconv.Atoi(userId); convErr != nil {
+			log.Println(convErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if updatedUser, updateErr := chibeDb.UpdateUser(userIdInt, jsonBody.Email, jsonBody.Password); updateErr != nil {
+			log.Println(updateErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if rawJson, encodeErr := json.Marshal(UserReturnJson{
+			ID:    updatedUser.Uid,
+			Email: updatedUser.Email,
+		}); encodeErr != nil {
+			log.Printf("Error while encoding the user to raw json %v: %v\n", rawJson, encodeErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			_, err := w.Write(rawJson)
 			if err != nil {

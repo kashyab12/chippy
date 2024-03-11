@@ -28,6 +28,7 @@ type UserJson struct {
 type UserReturnJson struct {
 	ID    int    `json:"id"`
 	Email string `json:"email"`
+	Token string `json:"token"`
 }
 
 type RequestBody interface {
@@ -50,7 +51,7 @@ func GetApiRouter(config *ApiConfig) *chi2.Mux {
 	apiRouter.Get("/chirps/{chirpID}", GetSingleChirp)
 	apiRouter.Post("/chirps", PostChirp)
 	apiRouter.Post("/users", PostUsers)
-	apiRouter.Post("/login", PostLogin)
+	apiRouter.Post("/login", config.PostLogin)
 	return apiRouter
 }
 

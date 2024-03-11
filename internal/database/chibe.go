@@ -221,11 +221,14 @@ func (chibe *DB) UpdateUser(targetUserId int, updatedEmail, updatedPassword stri
 	}); presentIdx == -1 {
 		log.Printf("user with id %v does not exist within chibe\n", targetUserId)
 		return updatedUser, errors.New("user does not exist")
+	} else if encryptedPass, encryptErr := bcrypt.GenerateFromPassword([]byte(updatedPassword), bcrypt.DefaultCost); encryptErr != nil {
+		log.Printf("Error encrypting the password of %v\n", updatedEmail)
+		return updatedUser, encryptErr
 	} else {
 		updatedUser = User{
 			Uid:      targetUserId,
 			Email:    updatedEmail,
-			Password: updatedPassword,
+			Password: string(encryptedPass),
 		}
 		if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
 			return updatedUser, loadErr

@@ -169,10 +169,10 @@ func (config *ApiConfig) PutUser(w http.ResponseWriter, r *http.Request) {
 		log.Println("Authorization header not provided")
 		w.WriteHeader(http.StatusUnauthorized)
 	} else {
-		extractedJwtToken := strings.Split(r.Header.Get("Authorization"), "Bearer ")[0]
+		extractedJwtToken := strings.Split(r.Header.Get("Authorization"), "Bearer ")[1]
 		registeredClaims := jwt.RegisteredClaims{}
 		if token, parseErr := jwt.ParseWithClaims(extractedJwtToken, &registeredClaims, func(token *jwt.Token) (interface{}, error) {
-			return config.JwtSecret, nil
+			return []byte(config.JwtSecret), nil
 		}); parseErr != nil {
 			log.Println("Invalid JWT, token is invalid or expired.")
 			w.WriteHeader(http.StatusUnauthorized)
@@ -260,7 +260,7 @@ func createJwt(subject, secretKey string, expiresAt, issuedAt *jwt.NumericDate) 
 		IssuedAt:  issuedAt,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, registeredClaims)
-	if jwtToken, signingError = token.SignedString(secretKey); signingError != nil {
+	if jwtToken, signingError = token.SignedString([]byte(secretKey)); signingError != nil {
 		return jwtToken, signingError
 	}
 	return jwtToken, nil

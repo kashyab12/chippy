@@ -2,6 +2,7 @@ package chandler
 
 import (
 	"encoding/json"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/kashyab12/chippy/internal/database"
 	"log"
 	"net/http"
@@ -161,7 +162,8 @@ func PostUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostLogin(w http.ResponseWriter, r *http.Request) {
-	if jsonBody, decodeErr := DecodeRequestBody(r, &UserJson{}); decodeErr != nil {
+	const DayInSeconds = 86400
+	if jsonBody, decodeErr := DecodeRequestBody(r, &UserJson{ExpiresInSeconds: DayInSeconds}); decodeErr != nil {
 		invalidChippyRequestStruct(w)
 	} else {
 		if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
@@ -190,4 +192,19 @@ func PostLogin(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
+
+func createJwt(subject, secretKey string, expiresAt, issuedAt jwt.NumericDate) (jwtToken string, signingError error) {
+	const Issuer = "chirpy"
+	registeredClaims := jwt.RegisteredClaims{
+		Issuer:    Issuer,
+		Subject:   subject,
+		ExpiresAt: &expiresAt,
+		IssuedAt:  &issuedAt,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, registeredClaims)
+	if jwtToken, signingError = token.SignedString(secretKey); signingError != nil {
+		return jwtToken, signingError
+	}
+	return jwtToken, nil
 }

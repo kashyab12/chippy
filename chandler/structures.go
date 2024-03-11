@@ -26,9 +26,10 @@ type UserJson struct {
 }
 
 type UserReturnJson struct {
-	ID    int    `json:"id"`
-	Email string `json:"email"`
-	Token string `json:"token,omitempty"`
+	ID           int    `json:"id"`
+	Email        string `json:"email"`
+	Token        string `json:"token,omitempty"`
+	RefreshToken string `json:"refreshToken,omitempty"`
 }
 
 type RequestBody interface {

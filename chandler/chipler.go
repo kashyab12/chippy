@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"time"
 )
 
 func DecodeRequestBody[J *BodyJson | *UserJson](r *http.Request, bodyStructure J) (J, error) {
@@ -161,7 +162,7 @@ func PostUsers(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func PostLogin(w http.ResponseWriter, r *http.Request) {
+func (config *ApiConfig) PostLogin(w http.ResponseWriter, r *http.Request) {
 	const DayInSeconds = 86400
 	if jsonBody, decodeErr := DecodeRequestBody(r, &UserJson{ExpiresInSeconds: DayInSeconds}); decodeErr != nil {
 		invalidChippyRequestStruct(w)
@@ -177,30 +178,41 @@ func PostLogin(w http.ResponseWriter, r *http.Request) {
 				log.Println(userError)
 				w.WriteHeader(http.StatusInternalServerError)
 			}
-		} else if rawJson, encodeErr := json.Marshal(UserReturnJson{
-			ID:    presentUser.Uid,
-			Email: presentUser.Email,
-		}); encodeErr != nil {
-			log.Printf("Error while encoding the user to raw json %v: %v\n", rawJson, encodeErr)
-			w.WriteHeader(http.StatusInternalServerError)
 		} else {
-			w.WriteHeader(http.StatusOK)
-			w.Header().Set("Content-Type", "application/json; charset=utf-8")
-			_, err := w.Write(rawJson)
-			if err != nil {
-				return
+			if jsonBody.ExpiresInSeconds <= 0 && jsonBody.ExpiresInSeconds > DayInSeconds {
+				jsonBody.ExpiresInSeconds = DayInSeconds
+			}
+			issuedAt := jwt.NewNumericDate(time.Now().UTC())
+			expiresAt := jwt.NewNumericDate(issuedAt.Add(time.Second * time.Duration(jsonBody.ExpiresInSeconds)))
+			if jwtToken, signingErr := createJwt(strconv.Itoa(presentUser.Uid), config.JwtSecret, expiresAt, issuedAt); signingErr != nil {
+				log.Println("Error signing JWT key using secret")
+				w.WriteHeader(http.StatusInternalServerError)
+			} else if rawJson, encodeErr := json.Marshal(UserReturnJson{
+				ID:    presentUser.Uid,
+				Email: presentUser.Email,
+				Token: jwtToken,
+			}); encodeErr != nil {
+				log.Printf("Error while encoding the user to raw json %v: %v\n", rawJson, encodeErr)
+				w.WriteHeader(http.StatusInternalServerError)
+			} else {
+				w.WriteHeader(http.StatusOK)
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				_, err := w.Write(rawJson)
+				if err != nil {
+					return
+				}
 			}
 		}
 	}
 }
 
-func createJwt(subject, secretKey string, expiresAt, issuedAt jwt.NumericDate) (jwtToken string, signingError error) {
+func createJwt(subject, secretKey string, expiresAt, issuedAt *jwt.NumericDate) (jwtToken string, signingError error) {
 	const Issuer = "chirpy"
 	registeredClaims := jwt.RegisteredClaims{
 		Issuer:    Issuer,
 		Subject:   subject,
-		ExpiresAt: &expiresAt,
-		IssuedAt:  &issuedAt,
+		ExpiresAt: expiresAt,
+		IssuedAt:  issuedAt,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, registeredClaims)
 	if jwtToken, signingError = token.SignedString(secretKey); signingError != nil {

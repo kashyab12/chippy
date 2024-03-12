@@ -57,7 +57,6 @@ func chippyTooLong(w http.ResponseWriter) {
 
 func PostChirp(w http.ResponseWriter, r *http.Request) {
 	log.Println("Validating Chippy!")
-	const MaxChippyLen = 140
 	if jsonBody, decodeErr := DecodeRequestBody(r, &BodyJson{}); decodeErr != nil {
 		invalidChippyRequestStruct(w)
 	} else if len(jsonBody.Body) > MaxChippyLen {
@@ -208,12 +207,6 @@ func (config *ApiConfig) PutUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (config *ApiConfig) PostLogin(w http.ResponseWriter, r *http.Request) {
-	const (
-		AccessTokenIssuer  = "chirpy-access"
-		AccessTokenExpiry  = time.Hour
-		RefreshTokenIssuer = "chirpy-refresh"
-		RefreshTokenExpiry = time.Hour * 24 * 60
-	)
 	if jsonBody, decodeErr := DecodeRequestBody(r, &UserJson{}); decodeErr != nil {
 		invalidChippyRequestStruct(w)
 	} else {

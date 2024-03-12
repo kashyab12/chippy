@@ -55,7 +55,7 @@ func NewDB(path string) (*DB, error) {
 }
 
 // CreateChirp creates a new chirp and saves it to disk
-func (chibe *DB) CreateChirp(body string) (Chirp, error) {
+func (chibe *DB) CreateChirp(body string, authorId int) (Chirp, error) {
 	var newChirp Chirp
 	if chirps, getChirpsErr := chibe.GetChirps(); getChirpsErr != nil {
 		return newChirp, getChirpsErr
@@ -69,8 +69,9 @@ func (chibe *DB) CreateChirp(body string) (Chirp, error) {
 			return newChirp, loadErr
 		} else {
 			newChirp = Chirp{
-				Uid:  newChirpId,
-				Body: body,
+				Uid:      newChirpId,
+				Body:     body,
+				AuthorID: authorId,
 			}
 			dbStruct.Chirps[newChirp.Uid] = newChirp
 			if writeErr := chibe.writeDB(dbStruct); writeErr != nil {

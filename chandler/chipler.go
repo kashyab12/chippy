@@ -55,17 +55,36 @@ func chippyTooLong(w http.ResponseWriter) {
 	}
 }
 
-func PostChirp(w http.ResponseWriter, r *http.Request) {
+func (config *ApiConfig) PostChirp(w http.ResponseWriter, r *http.Request) {
 	log.Println("Validating Chippy!")
 	if jsonBody, decodeErr := DecodeRequestBody(r, &BodyJson{}); decodeErr != nil {
 		invalidChippyRequestStruct(w)
 	} else if len(jsonBody.Body) > MaxChippyLen {
 		chippyTooLong(w)
+	} else if r.Header.Get("Authorization") == "" {
+		log.Println("Authorization header not provided")
+		w.WriteHeader(http.StatusUnauthorized)
 	} else {
-		if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
+		extractedJwtToken := strings.Split(r.Header.Get("Authorization"), "Bearer ")[1]
+		registeredClaims := jwt.RegisteredClaims{}
+		if token, parseErr := jwt.ParseWithClaims(extractedJwtToken, &registeredClaims, func(token *jwt.Token) (interface{}, error) {
+			return []byte(config.JwtSecret), nil
+		}); parseErr != nil {
+			log.Println("Invalid JWT, token is invalid or expired.")
+			w.WriteHeader(http.StatusUnauthorized)
+		} else if userId, subjectErr := token.Claims.GetSubject(); subjectErr != nil {
+			log.Println("Unable to extract user id via the subject info within JWT")
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if issuer, _ := token.Claims.GetIssuer(); issuer == RefreshTokenIssuer {
+			log.Println("Can't use RefreshToken to post a chirp!")
+			w.WriteHeader(http.StatusUnauthorized)
+		} else if userIdInt, convErr := strconv.Atoi(userId); convErr != nil {
+			log.Println(convErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
 			log.Printf("Error while creating the database: %v\n", newDbErr)
 			w.WriteHeader(http.StatusInternalServerError)
-		} else if chirp, createErr := chibeDb.CreateChirp(jsonBody.Body); createErr != nil {
+		} else if chirp, createErr := chibeDb.CreateChirp(jsonBody.Body, userIdInt); createErr != nil {
 			log.Printf("Error while creating the chirp: %v\n", createErr)
 			w.WriteHeader(http.StatusInternalServerError)
 		} else if rawJson, encodeErr := json.Marshal(chirp); encodeErr != nil {

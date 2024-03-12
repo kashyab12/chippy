@@ -328,6 +328,8 @@ func (config *ApiConfig) PostRevoke(w http.ResponseWriter, r *http.Request) {
 		} else if revokeErr := chibeDb.RevokeToken(extractedJwtToken); revokeErr != nil {
 			log.Println(revokeErr)
 			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusOK)
 		}
 	}
 }

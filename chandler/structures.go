@@ -33,7 +33,7 @@ type UserReturnJson struct {
 	ID           int    `json:"id"`
 	Email        string `json:"email"`
 	Token        string `json:"token,omitempty"`
-	RefreshToken string `json:"refreshToken,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 type RequestBody interface {
@@ -59,7 +59,7 @@ func GetApiRouter(config *ApiConfig) *chi2.Mux {
 	apiRouter.Put("/users", config.PutUser)
 	apiRouter.Post("/login", config.PostLogin)
 	apiRouter.Post("/refresh", config.PostRefresh)
-	apiRouter.Post("/revoke", config.PostRefresh)
+	apiRouter.Post("/revoke", config.PostRevoke)
 	return apiRouter
 }
 

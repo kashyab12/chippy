@@ -58,6 +58,8 @@ func GetApiRouter(config *ApiConfig) *chi2.Mux {
 	apiRouter.Post("/users", PostUsers)
 	apiRouter.Put("/users", config.PutUser)
 	apiRouter.Post("/login", config.PostLogin)
+	apiRouter.Post("/refresh", config.PostRefresh)
+	apiRouter.Post("/revoke", config.PostRefresh)
 	return apiRouter
 }
 

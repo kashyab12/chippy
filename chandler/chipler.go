@@ -178,6 +178,9 @@ func (config *ApiConfig) PutUser(w http.ResponseWriter, r *http.Request) {
 		} else if userId, subjectErr := token.Claims.GetSubject(); subjectErr != nil {
 			log.Println("Unable to extract user id via the subject info within JWT")
 			w.WriteHeader(http.StatusInternalServerError)
+		} else if issuer, _ := token.Claims.GetIssuer(); issuer == RefreshTokenIssuer {
+			log.Println("Can't use RefreshToken to update user info!")
+			w.WriteHeader(http.StatusUnauthorized)
 		} else if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
 			log.Printf("Error while creating the database: %v\n", newDbErr)
 			w.WriteHeader(http.StatusInternalServerError)

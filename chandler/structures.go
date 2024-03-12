@@ -4,6 +4,7 @@ import (
 	chi2 "github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
+	"time"
 )
 
 type ApiConfig struct {
@@ -68,3 +69,11 @@ func CloseIoReadCloserStream(stream io.ReadCloser) {
 		return
 	}
 }
+
+const (
+	MaxChippyLen       = 140
+	AccessTokenIssuer  = "chirpy-access"
+	AccessTokenExpiry  = time.Hour
+	RefreshTokenIssuer = "chirpy-refresh"
+	RefreshTokenExpiry = time.Hour * 24 * 60
+)

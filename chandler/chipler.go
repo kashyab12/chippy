@@ -234,6 +234,9 @@ func (config *ApiConfig) PostLogin(w http.ResponseWriter, r *http.Request) {
 			} else if refreshToken, refreshTokenSigningError := createJwt(RefreshTokenIssuer, strconv.Itoa(presentUser.Uid), config.JwtSecret, refreshTokenExpiresAt, accessTokenIssuedAt); refreshTokenSigningError != nil {
 				log.Println(refreshTokenSigningError)
 				w.WriteHeader(http.StatusInternalServerError)
+			} else if addToSessionStoreErr := chibeDb.AddRefreshTokenToSessionStore(refreshToken); addToSessionStoreErr != nil {
+				log.Println(addToSessionStoreErr)
+				w.WriteHeader(http.StatusInternalServerError)
 			} else if rawJson, encodeErr := json.Marshal(UserReturnJson{
 				ID:           presentUser.Uid,
 				Email:        presentUser.Email,

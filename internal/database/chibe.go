@@ -40,7 +40,7 @@ type User struct {
 
 type SessionStore struct {
 	IsRevoked  bool      `json:"is_revoked"`
-	RevokeTime time.Time `json:"revoke_time"`
+	RevokeTime time.Time `json:"revoke_time,omitempty"`
 }
 
 // NewDB creates a new database connection
@@ -270,6 +270,21 @@ func (chibe *DB) IsRefreshTokenRevoked(refreshToken string) (bool, error) {
 		return false, getTokensErr
 	}
 	return refTokenInfo.IsRevoked, nil
+}
+
+func (chibe *DB) RevokeToken(refreshToken string) error {
+	if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
+		return loadErr
+	} else {
+		dbStruct.SessionMap[refreshToken] = SessionStore{
+			IsRevoked:  true,
+			RevokeTime: time.Now().UTC(),
+		}
+		if writeErr := chibe.writeDB(dbStruct); writeErr != nil {
+			return writeErr
+		}
+	}
+	return nil
 }
 
 func closeDbFile(file io.ReadCloser) {

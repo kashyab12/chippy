@@ -269,7 +269,7 @@ func (config *ApiConfig) PostRefresh(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
 		} else if issuer, _ := token.Claims.GetIssuer(); issuer != RefreshTokenIssuer {
 			// Make sure it's a refresh token
-			log.Println("Can't use RefreshToken to update user info!")
+			log.Println("RefreshToken required for the refresh endpoint!")
 			w.WriteHeader(http.StatusUnauthorized)
 		} else if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
 			log.Printf("Error while creating the database: %v\n", newDbErr)
@@ -277,10 +277,7 @@ func (config *ApiConfig) PostRefresh(w http.ResponseWriter, r *http.Request) {
 		} else if userId, fetchSubjectErr := token.Claims.GetSubject(); fetchSubjectErr != nil {
 			log.Println(fetchSubjectErr)
 			w.WriteHeader(http.StatusUnauthorized)
-		} else if userIdInt, convErr := strconv.Atoi(userId); convErr != nil {
-			log.Println(convErr)
-			w.WriteHeader(http.StatusInternalServerError)
-		} else if isRevoked, checkStoreErr := chibeDb.IsRevokedRefreshToken(extractedJwtToken, userIdInt); checkStoreErr != nil {
+		} else if isRevoked, checkStoreErr := chibeDb.IsRefreshTokenRevoked(extractedJwtToken); checkStoreErr != nil {
 			log.Println(checkStoreErr)
 			w.WriteHeader(http.StatusInternalServerError)
 		} else if isRevoked {
@@ -304,6 +301,33 @@ func (config *ApiConfig) PostRefresh(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 			}
+		}
+	}
+}
+
+func (config *ApiConfig) PostRevoke(w http.ResponseWriter, r *http.Request) {
+	// Get Auth Headers
+	if r.Header.Get("Authorization") == "" {
+		log.Println("Authorization header not provided")
+		w.WriteHeader(http.StatusUnauthorized)
+	} else {
+		extractedJwtToken := strings.Split(r.Header.Get("Authorization"), "Bearer ")[1]
+		registeredClaims := jwt.RegisteredClaims{}
+		if token, parseErr := jwt.ParseWithClaims(extractedJwtToken, &registeredClaims, func(token *jwt.Token) (interface{}, error) {
+			return []byte(config.JwtSecret), nil
+		}); parseErr != nil {
+			log.Println("Invalid JWT, token is invalid or expired.")
+			w.WriteHeader(http.StatusUnauthorized)
+		} else if issuer, _ := token.Claims.GetIssuer(); issuer != RefreshTokenIssuer {
+			// Make sure it's a refresh token
+			log.Println("RefreshToken required for the revoke endpoint!")
+			w.WriteHeader(http.StatusUnauthorized)
+		} else if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
+			log.Printf("Error while creating the database: %v\n", newDbErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if revokeErr := chibeDb.RevokeToken(extractedJwtToken); revokeErr != nil {
+			log.Println(revokeErr)
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
 }

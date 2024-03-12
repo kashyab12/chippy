@@ -208,8 +208,13 @@ func (config *ApiConfig) PutUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (config *ApiConfig) PostLogin(w http.ResponseWriter, r *http.Request) {
-	const DayInSeconds = 86400
-	if jsonBody, decodeErr := DecodeRequestBody(r, &UserJson{ExpiresInSeconds: DayInSeconds}); decodeErr != nil {
+	const (
+		AccessTokenIssuer  = "chirpy-access"
+		AccessTokenExpiry  = time.Hour
+		RefreshTokenIssuer = "chirpy-refresh"
+		RefreshTokenExpiry = time.Hour * 24 * 60
+	)
+	if jsonBody, decodeErr := DecodeRequestBody(r, &UserJson{}); decodeErr != nil {
 		invalidChippyRequestStruct(w)
 	} else {
 		if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
@@ -224,18 +229,20 @@ func (config *ApiConfig) PostLogin(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 			}
 		} else {
-			if jsonBody.ExpiresInSeconds <= 0 && jsonBody.ExpiresInSeconds > DayInSeconds {
-				jsonBody.ExpiresInSeconds = DayInSeconds
-			}
-			issuedAt := jwt.NewNumericDate(time.Now().UTC())
-			expiresAt := jwt.NewNumericDate(issuedAt.Add(time.Second * time.Duration(jsonBody.ExpiresInSeconds)))
-			if jwtToken, signingErr := createJwt(strconv.Itoa(presentUser.Uid), config.JwtSecret, expiresAt, issuedAt); signingErr != nil {
-				log.Println("Error signing JWT key using secret")
+			accessTokenIssuedAt := jwt.NewNumericDate(time.Now().UTC())
+			accessTokenExpiresAt := jwt.NewNumericDate(accessTokenIssuedAt.Add(AccessTokenExpiry))
+			refreshTokenExpiresAt := jwt.NewNumericDate(accessTokenIssuedAt.Add(RefreshTokenExpiry))
+			if accessToken, accessTokenSigningErr := createJwt(AccessTokenIssuer, strconv.Itoa(presentUser.Uid), config.JwtSecret, accessTokenExpiresAt, accessTokenIssuedAt); accessTokenSigningErr != nil {
+				log.Println(accessTokenSigningErr)
+				w.WriteHeader(http.StatusInternalServerError)
+			} else if refreshToken, refreshTokenSigningError := createJwt(RefreshTokenIssuer, strconv.Itoa(presentUser.Uid), config.JwtSecret, refreshTokenExpiresAt, accessTokenIssuedAt); refreshTokenSigningError != nil {
+				log.Println(refreshTokenSigningError)
 				w.WriteHeader(http.StatusInternalServerError)
 			} else if rawJson, encodeErr := json.Marshal(UserReturnJson{
-				ID:    presentUser.Uid,
-				Email: presentUser.Email,
-				Token: jwtToken,
+				ID:           presentUser.Uid,
+				Email:        presentUser.Email,
+				Token:        accessToken,
+				RefreshToken: refreshToken,
 			}); encodeErr != nil {
 				log.Printf("Error while encoding the user to raw json %v: %v\n", rawJson, encodeErr)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -251,10 +258,9 @@ func (config *ApiConfig) PostLogin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func createJwt(subject, secretKey string, expiresAt, issuedAt *jwt.NumericDate) (jwtToken string, signingError error) {
-	const Issuer = "chirpy"
+func createJwt(issuer, subject, secretKey string, expiresAt, issuedAt *jwt.NumericDate) (jwtToken string, signingError error) {
 	registeredClaims := jwt.RegisteredClaims{
-		Issuer:    Issuer,
+		Issuer:    issuer,
 		Subject:   subject,
 		ExpiresAt: expiresAt,
 		IssuedAt:  issuedAt,

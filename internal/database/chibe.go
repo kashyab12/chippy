@@ -275,10 +275,26 @@ func (chibe *DB) IsRefreshTokenRevoked(refreshToken string) (bool, error) {
 func (chibe *DB) RevokeToken(refreshToken string) error {
 	if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
 		return loadErr
+	} else if _, isPresent := dbStruct.SessionMap[refreshToken]; !isPresent {
+		return errors.New("refresh token not in session store")
 	} else {
 		dbStruct.SessionMap[refreshToken] = SessionStore{
 			IsRevoked:  true,
 			RevokeTime: time.Now().UTC(),
+		}
+		if writeErr := chibe.writeDB(dbStruct); writeErr != nil {
+			return writeErr
+		}
+	}
+	return nil
+}
+
+func (chibe *DB) AddRefreshTokenToSessionStore(refreshToken string) error {
+	if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
+		return loadErr
+	} else {
+		dbStruct.SessionMap[refreshToken] = SessionStore{
+			IsRevoked: false,
 		}
 		if writeErr := chibe.writeDB(dbStruct); writeErr != nil {
 			return writeErr

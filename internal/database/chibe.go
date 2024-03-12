@@ -21,8 +21,9 @@ type DB struct {
 }
 
 type DBStructure struct {
-	Chirps map[int]Chirp `json:"chirps"`
-	Users  map[int]User  `json:"users"`
+	Chirps     map[int]Chirp        `json:"chirps"`
+	Users      map[int]User         `json:"users"`
+	SessionMap map[int]SessionStore `json:"sessionStore"`
 }
 
 type Chirp struct {
@@ -34,6 +35,10 @@ type User struct {
 	Uid      int    `json:"id"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type SessionStore struct {
+	RevokedRefreshTokens []string `json:"revoked_refresh_tokens"`
 }
 
 // NewDB creates a new database connection
@@ -85,7 +90,7 @@ func (chibe *DB) loadDB() (DBStructure, error) {
 		if decodeErr := jsonDecoder.Decode(&chibeTheDb); decodeErr != nil {
 			// Case when chibe is empty
 			if errors.Is(decodeErr, io.EOF) {
-				return DBStructure{map[int]Chirp{}, map[int]User{}}, nil
+				return DBStructure{map[int]Chirp{}, map[int]User{}, map[int]SessionStore{}}, nil
 			} else {
 				log.Fatalf("Error while decoding Chibe the DB :(")
 				return chibeTheDb, decodeErr
@@ -240,6 +245,31 @@ func (chibe *DB) UpdateUser(targetUserId int, updatedEmail, updatedPassword stri
 		}
 	}
 	return updatedUser, nil
+}
+
+func (chibe *DB) GetRevokedRefreshToken(userId int) ([]string, error) {
+	var revokedRefreshTokens []string
+	if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
+		return nil, loadErr
+	} else if len(dbStruct.SessionMap) > 0 {
+		chibe.mux.RLock()
+		defer chibe.mux.RUnlock()
+		revokedRefreshTokens = dbStruct.SessionMap[userId].RevokedRefreshTokens
+	}
+	return revokedRefreshTokens, nil
+}
+
+func (chibe *DB) IsRevokedRefreshToken(refreshToken string, userId int) (bool, error) {
+	if revokedRefreshTokens, getTokensErr := chibe.GetRevokedRefreshToken(userId); getTokensErr != nil {
+		return false, getTokensErr
+	} else if len(revokedRefreshTokens) < 1 {
+		return false, nil
+	} else if targetIdx := slices.IndexFunc(revokedRefreshTokens, func(refToken string) bool {
+		return refToken == refreshToken
+	}); targetIdx != -1 {
+		return true, nil
+	}
+	return false, nil
 }
 
 func closeDbFile(file io.ReadCloser) {

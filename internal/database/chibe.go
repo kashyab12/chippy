@@ -82,6 +82,8 @@ func (chibe *DB) CreateChirp(body string) (Chirp, error) {
 
 // loadDB Read chibe into memory
 func (chibe *DB) loadDB() (DBStructure, error) {
+	chibe.mux.RLock()
+	defer chibe.mux.RUnlock()
 	chibeTheDb := DBStructure{}
 	if jsonFile, openErr := os.OpenFile(chibe.path, os.O_RDWR, 0666); openErr != nil {
 		log.Fatalf("Error while trying to open file %v", chibe.path)
@@ -138,8 +140,6 @@ func (chibe *DB) GetChirps() ([]Chirp, error) {
 	if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
 		return nil, loadErr
 	} else if len(dbStruct.Chirps) > 0 {
-		chibe.mux.RLock()
-		defer chibe.mux.RUnlock()
 		for _, chirp := range dbStruct.Chirps {
 			chirps = append(chirps, chirp)
 		}
@@ -154,8 +154,6 @@ func (chibe *DB) GetUsers() ([]User, error) {
 	if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
 		return nil, loadErr
 	} else if len(dbStruct.Users) > 0 {
-		chibe.mux.RLock()
-		defer chibe.mux.RUnlock()
 		for _, user := range dbStruct.Users {
 			users = append(users, user)
 		}
@@ -254,8 +252,6 @@ func (chibe *DB) GetRevokedRefreshToken(targetRefToken string) (SessionStore, er
 	if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
 		return refTokenInfo, loadErr
 	} else if len(dbStruct.SessionMap) > 0 {
-		chibe.mux.RLock()
-		defer chibe.mux.RUnlock()
 		var isPresent bool
 		if refTokenInfo, isPresent = dbStruct.SessionMap[targetRefToken]; !isPresent {
 			return refTokenInfo, errors.New("refresh token info not available")

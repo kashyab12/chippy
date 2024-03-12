@@ -254,6 +254,60 @@ func (config *ApiConfig) PostLogin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (config *ApiConfig) PostRefresh(w http.ResponseWriter, r *http.Request) {
+	// Get Auth Headers
+	if r.Header.Get("Authorization") == "" {
+		log.Println("Authorization header not provided")
+		w.WriteHeader(http.StatusUnauthorized)
+	} else {
+		extractedJwtToken := strings.Split(r.Header.Get("Authorization"), "Bearer ")[1]
+		registeredClaims := jwt.RegisteredClaims{}
+		if token, parseErr := jwt.ParseWithClaims(extractedJwtToken, &registeredClaims, func(token *jwt.Token) (interface{}, error) {
+			return []byte(config.JwtSecret), nil
+		}); parseErr != nil {
+			log.Println("Invalid JWT, token is invalid or expired.")
+			w.WriteHeader(http.StatusUnauthorized)
+		} else if issuer, _ := token.Claims.GetIssuer(); issuer != RefreshTokenIssuer {
+			// Make sure it's a refresh token
+			log.Println("Can't use RefreshToken to update user info!")
+			w.WriteHeader(http.StatusUnauthorized)
+		} else if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
+			log.Printf("Error while creating the database: %v\n", newDbErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if userId, fetchSubjectErr := token.Claims.GetSubject(); fetchSubjectErr != nil {
+			log.Println(fetchSubjectErr)
+			w.WriteHeader(http.StatusUnauthorized)
+		} else if userIdInt, convErr := strconv.Atoi(userId); convErr != nil {
+			log.Println(convErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if isRevoked, checkStoreErr := chibeDb.IsRevokedRefreshToken(extractedJwtToken, userIdInt); checkStoreErr != nil {
+			log.Println(checkStoreErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if isRevoked {
+			w.WriteHeader(http.StatusUnauthorized)
+		} else {
+			accessTokenIssuedAt := jwt.NewNumericDate(time.Now().UTC())
+			accessTokenExpiresAt := jwt.NewNumericDate(accessTokenIssuedAt.Add(AccessTokenExpiry))
+			if accessToken, accessTokenSigningErr := createJwt(AccessTokenIssuer, userId, config.JwtSecret, accessTokenExpiresAt, accessTokenIssuedAt); accessTokenSigningErr != nil {
+				log.Println(accessTokenSigningErr)
+				w.WriteHeader(http.StatusInternalServerError)
+			} else if rawJson, encodeErr := json.Marshal(TokenRefreshReturnJson{
+				Token: accessToken,
+			}); encodeErr != nil {
+				log.Println(encodeErr)
+				w.WriteHeader(http.StatusInternalServerError)
+			} else {
+				w.WriteHeader(http.StatusOK)
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				_, err := w.Write(rawJson)
+				if err != nil {
+					return
+				}
+			}
+		}
+	}
+}
+
 func createJwt(issuer, subject, secretKey string, expiresAt, issuedAt *jwt.NumericDate) (jwtToken string, signingError error) {
 	registeredClaims := jwt.RegisteredClaims{
 		Issuer:    issuer,

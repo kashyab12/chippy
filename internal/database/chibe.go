@@ -11,6 +11,7 @@ import (
 	"os"
 	"slices"
 	"sync"
+	"time"
 )
 
 const ChibeFile = "./database.json"
@@ -21,9 +22,9 @@ type DB struct {
 }
 
 type DBStructure struct {
-	Chirps     map[int]Chirp        `json:"chirps"`
-	Users      map[int]User         `json:"users"`
-	SessionMap map[int]SessionStore `json:"sessionStore"`
+	Chirps     map[int]Chirp           `json:"chirps"`
+	Users      map[int]User            `json:"users"`
+	SessionMap map[string]SessionStore `json:"sessionStore"`
 }
 
 type Chirp struct {
@@ -38,7 +39,8 @@ type User struct {
 }
 
 type SessionStore struct {
-	RevokedRefreshTokens []string `json:"revoked_refresh_tokens"`
+	IsRevoked  bool      `json:"is_revoked"`
+	RevokeTime time.Time `json:"revoke_time"`
 }
 
 // NewDB creates a new database connection
@@ -90,7 +92,7 @@ func (chibe *DB) loadDB() (DBStructure, error) {
 		if decodeErr := jsonDecoder.Decode(&chibeTheDb); decodeErr != nil {
 			// Case when chibe is empty
 			if errors.Is(decodeErr, io.EOF) {
-				return DBStructure{map[int]Chirp{}, map[int]User{}, map[int]SessionStore{}}, nil
+				return DBStructure{map[int]Chirp{}, map[int]User{}, map[string]SessionStore{}}, nil
 			} else {
 				log.Fatalf("Error while decoding Chibe the DB :(")
 				return chibeTheDb, decodeErr
@@ -247,29 +249,27 @@ func (chibe *DB) UpdateUser(targetUserId int, updatedEmail, updatedPassword stri
 	return updatedUser, nil
 }
 
-func (chibe *DB) GetRevokedRefreshToken(userId int) ([]string, error) {
-	var revokedRefreshTokens []string
+func (chibe *DB) GetRevokedRefreshToken(targetRefToken string) (SessionStore, error) {
+	var refTokenInfo SessionStore
 	if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
-		return nil, loadErr
+		return refTokenInfo, loadErr
 	} else if len(dbStruct.SessionMap) > 0 {
 		chibe.mux.RLock()
 		defer chibe.mux.RUnlock()
-		revokedRefreshTokens = dbStruct.SessionMap[userId].RevokedRefreshTokens
+		var isPresent bool
+		if refTokenInfo, isPresent = dbStruct.SessionMap[targetRefToken]; !isPresent {
+			return refTokenInfo, errors.New("refresh token info not available")
+		}
 	}
-	return revokedRefreshTokens, nil
+	return refTokenInfo, nil
 }
 
-func (chibe *DB) IsRevokedRefreshToken(refreshToken string, userId int) (bool, error) {
-	if revokedRefreshTokens, getTokensErr := chibe.GetRevokedRefreshToken(userId); getTokensErr != nil {
+func (chibe *DB) IsRefreshTokenRevoked(refreshToken string) (bool, error) {
+	refTokenInfo, getTokensErr := chibe.GetRevokedRefreshToken(refreshToken)
+	if getTokensErr != nil {
 		return false, getTokensErr
-	} else if len(revokedRefreshTokens) < 1 {
-		return false, nil
-	} else if targetIdx := slices.IndexFunc(revokedRefreshTokens, func(refToken string) bool {
-		return refToken == refreshToken
-	}); targetIdx != -1 {
-		return true, nil
 	}
-	return false, nil
+	return refTokenInfo.IsRevoked, nil
 }
 
 func closeDbFile(file io.ReadCloser) {

@@ -25,6 +25,10 @@ type UserJson struct {
 	Password string `json:"password"`
 }
 
+type TokenRefreshReturnJson struct {
+	Token string `json:"token"`
+}
+
 type UserReturnJson struct {
 	ID           int    `json:"id"`
 	Email        string `json:"email"`

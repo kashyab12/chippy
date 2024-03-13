@@ -54,6 +54,7 @@ func GetApiRouter(config *ApiConfig) *chi2.Mux {
 	apiRouter.HandleFunc("/reset", config.resetFsHitsHandler)
 	apiRouter.Get("/chirps", GetChirp)
 	apiRouter.Get("/chirps/{chirpID}", GetSingleChirp)
+	apiRouter.Delete("/chirps/{chirpID}", config.DeleteChirp)
 	apiRouter.Post("/chirps", config.PostChirp)
 	apiRouter.Post("/users", PostUsers)
 	apiRouter.Put("/users", config.PutUser)

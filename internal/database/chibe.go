@@ -82,6 +82,18 @@ func (chibe *DB) CreateChirp(body string, authorId int) (Chirp, error) {
 	return newChirp, nil
 }
 
+func (chibe *DB) DeleteChirp(targetChirpID int) error {
+	if dbStruct, fetchDbStructErr := chibe.loadDB(); fetchDbStructErr != nil {
+		return fetchDbStructErr
+	} else {
+		delete(dbStruct.Chirps, targetChirpID)
+		if writeErr := chibe.writeDB(dbStruct); writeErr != nil {
+			return writeErr
+		}
+	}
+	return nil
+}
+
 // loadDB Read chibe into memory
 func (chibe *DB) loadDB() (DBStructure, error) {
 	chibe.mux.RLock()

@@ -95,6 +95,29 @@ func (chibe *DB) DeleteChirp(targetChirpID int) error {
 	return nil
 }
 
+func (chibe *DB) UpgradeUser(userID int) error {
+	if users, fetchUsersErr := chibe.GetUsers(); fetchUsersErr != nil {
+		return fetchUsersErr
+	} else if targetIdx := slices.IndexFunc(users, func(us User) bool {
+		return us.Uid == userID
+	}); targetIdx == -1 {
+		return errors.New("user not found")
+	} else if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
+		return loadErr
+	} else {
+		dbStruct.Users[userID] = User{
+			Uid:         dbStruct.Users[userID].Uid,
+			Email:       dbStruct.Users[userID].Email,
+			Password:    dbStruct.Users[userID].Password,
+			IsChirpyRed: true,
+		}
+		if writeErr := chibe.writeDB(dbStruct); writeErr != nil {
+			return writeErr
+		}
+	}
+	return nil
+}
+
 // loadDB Read chibe into memory
 func (chibe *DB) loadDB() (DBStructure, error) {
 	chibe.mux.RLock()
@@ -200,9 +223,10 @@ func (chibe *DB) CreateUser(email, password string) (User, error) {
 			return newUser, encryptErr
 		} else {
 			newUser = User{
-				Uid:      newUserId,
-				Email:    email,
-				Password: string(encryptedPass),
+				Uid:         newUserId,
+				Email:       email,
+				Password:    string(encryptedPass),
+				IsChirpyRed: false,
 			}
 			dbStruct.Users[newUser.Uid] = newUser
 			if writeErr := chibe.writeDB(dbStruct); writeErr != nil {
@@ -246,9 +270,10 @@ func (chibe *DB) UpdateUser(targetUserId int, updatedEmail, updatedPassword stri
 		return updatedUser, encryptErr
 	} else {
 		updatedUser = User{
-			Uid:      targetUserId,
-			Email:    updatedEmail,
-			Password: string(encryptedPass),
+			Uid:         targetUserId,
+			Email:       updatedEmail,
+			Password:    string(encryptedPass),
+			IsChirpyRed: false,
 		}
 		if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
 			return updatedUser, loadErr

@@ -10,6 +10,7 @@ import (
 type ApiConfig struct {
 	FsHits    int
 	JwtSecret string
+	PolkaKey  string
 }
 
 type ErrorJson struct {

@@ -34,9 +34,10 @@ type Chirp struct {
 }
 
 type User struct {
-	Uid      int    `json:"id"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Uid         int    `json:"id"`
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	IsChirpyRed bool   `json:"is_chirpy_red"`
 }
 
 type SessionStore struct {

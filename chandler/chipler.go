@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func DecodeRequestBody[J *BodyJson | *UserJson](r *http.Request, bodyStructure J) (J, error) {
+func DecodeRequestBody[J *BodyJson | *UserJson | *WebhookJson](r *http.Request, bodyStructure J) (J, error) {
 	decoder := json.NewDecoder(r.Body)
 	defer CloseIoReadCloserStream(r.Body)
 	err := decoder.Decode(bodyStructure)
@@ -214,8 +214,9 @@ func PostUsers(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error while creating the user: %v\n", createErr)
 			w.WriteHeader(http.StatusInternalServerError)
 		} else if rawJson, encodeErr := json.Marshal(UserReturnJson{
-			ID:    user.Uid,
-			Email: user.Email,
+			ID:          user.Uid,
+			Email:       user.Email,
+			IsChirpyRed: user.IsChirpyRed,
 		}); encodeErr != nil {
 			log.Printf("Error while encoding the user to raw json %v: %v\n", rawJson, encodeErr)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -262,8 +263,9 @@ func (config *ApiConfig) PutUser(w http.ResponseWriter, r *http.Request) {
 			log.Println(updateErr)
 			w.WriteHeader(http.StatusInternalServerError)
 		} else if rawJson, encodeErr := json.Marshal(UserReturnJson{
-			ID:    updatedUser.Uid,
-			Email: updatedUser.Email,
+			ID:          updatedUser.Uid,
+			Email:       updatedUser.Email,
+			IsChirpyRed: updatedUser.IsChirpyRed,
 		}); encodeErr != nil {
 			log.Printf("Error while encoding the user to raw json %v: %v\n", rawJson, encodeErr)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -309,6 +311,7 @@ func (config *ApiConfig) PostLogin(w http.ResponseWriter, r *http.Request) {
 			} else if rawJson, encodeErr := json.Marshal(UserReturnJson{
 				ID:           presentUser.Uid,
 				Email:        presentUser.Email,
+				IsChirpyRed:  presentUser.IsChirpyRed,
 				Token:        accessToken,
 				RefreshToken: refreshToken,
 			}); encodeErr != nil {
@@ -403,6 +406,29 @@ func (config *ApiConfig) PostRevoke(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.WriteHeader(http.StatusOK)
 		}
+	}
+}
+
+func ChirpyRedWebhook(w http.ResponseWriter, r *http.Request) {
+	const ChirpyRedReq = "user.upgraded"
+	if jsonBody, decodeErr := DecodeRequestBody(r, &WebhookJson{}); decodeErr != nil {
+		invalidChippyRequestStruct(w)
+	} else if jsonBody.Event != ChirpyRedReq {
+		w.WriteHeader(http.StatusOK)
+	} else if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
+		log.Printf("Error while creating the database: %v\n", newDbErr)
+		w.WriteHeader(http.StatusInternalServerError)
+	} else if userId, isPresent := jsonBody.Data["user_id"]; !isPresent {
+		log.Println("User ID not provided in webhook")
+		w.WriteHeader(http.StatusBadRequest)
+	} else if upgradeErr := chibeDb.UpgradeUser(userId); upgradeErr != nil {
+		if upgradeErr.Error() == "user not found" {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	} else {
+		w.WriteHeader(http.StatusOK)
 	}
 }
 

@@ -153,6 +153,56 @@ func GetSingleChirp(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (config *ApiConfig) DeleteChirp(w http.ResponseWriter, r *http.Request) {
+	if targetChirpIdStr := r.PathValue("chirpID"); len(targetChirpIdStr) < 1 {
+		log.Printf("Unable to match to chirp id based on provided path\n")
+		w.WriteHeader(http.StatusInternalServerError)
+	} else if targetChirpId, convErr := strconv.Atoi(targetChirpIdStr); convErr != nil {
+		log.Printf("Conversion error of chirp id from string to integer\n")
+		w.WriteHeader(http.StatusInternalServerError)
+	} else if r.Header.Get("Authorization") == "" {
+		log.Println("Authorization header not provided")
+		w.WriteHeader(http.StatusUnauthorized)
+	} else {
+		extractedJwtToken := strings.Split(r.Header.Get("Authorization"), "Bearer ")[1]
+		registeredClaims := jwt.RegisteredClaims{}
+		if token, parseErr := jwt.ParseWithClaims(extractedJwtToken, &registeredClaims, func(token *jwt.Token) (interface{}, error) {
+			return []byte(config.JwtSecret), nil
+		}); parseErr != nil {
+			log.Println("Invalid JWT, token is invalid or expired.")
+			w.WriteHeader(http.StatusUnauthorized)
+		} else if expectedAuthorIdStr, subjectErr := token.Claims.GetSubject(); subjectErr != nil {
+			log.Println("Unable to extract user id via the subject info within JWT")
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if issuer, _ := token.Claims.GetIssuer(); issuer == RefreshTokenIssuer {
+			log.Println("Can't use RefreshToken to post a chirp!")
+			w.WriteHeader(http.StatusUnauthorized)
+		} else if expectedAuthorId, idConvErr := strconv.Atoi(expectedAuthorIdStr); idConvErr != nil {
+			log.Println(convErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
+			log.Printf("Error while creating the database: %v\n", newDbErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if chirps, getChirpsErr := chibeDb.GetChirps(); getChirpsErr != nil {
+			log.Printf("Error while obtaining chibe entries: %v\n", getChirpsErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if targetIdx := slices.IndexFunc(chirps, func(ch database.Chirp) bool {
+			return ch.Uid == targetChirpId
+		}); targetIdx == -1 {
+			log.Printf("Chirp ID not present within chibe the db\n")
+			w.WriteHeader(http.StatusNotFound)
+		} else if expectedAuthorId != chirps[targetIdx].AuthorID {
+			log.Printf("The expected author id '%v' is not equal to the actual author id (via JWT) '%v'", expectedAuthorId, chirps[targetIdx].AuthorID)
+			w.WriteHeader(http.StatusForbidden)
+		} else if deletionErr := chibeDb.DeleteChirp(targetChirpId); deletionErr != nil {
+			log.Println(deletionErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+	}
+}
+
 func PostUsers(w http.ResponseWriter, r *http.Request) {
 	if jsonBody, decodeErr := DecodeRequestBody(r, &UserJson{}); decodeErr != nil {
 		invalidChippyRequestStruct(w)

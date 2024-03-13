@@ -16,6 +16,11 @@ type ErrorJson struct {
 	ErrMsg string `json:"error"`
 }
 
+type WebhookJson struct {
+	Event string         `json:"event"`
+	Data  map[string]int `json:"data"`
+}
+
 type BodyJson struct {
 	Body string `json:"body"`
 }

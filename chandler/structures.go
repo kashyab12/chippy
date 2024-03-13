@@ -68,7 +68,7 @@ func GetApiRouter(config *ApiConfig) *chi2.Mux {
 	apiRouter.Post("/login", config.PostLogin)
 	apiRouter.Post("/refresh", config.PostRefresh)
 	apiRouter.Post("/revoke", config.PostRevoke)
-	apiRouter.Post("/polka/webhooks", ChirpyRedWebhook)
+	apiRouter.Post("/polka/webhooks", config.ChirpyRedWebhook)
 	return apiRouter
 }
 

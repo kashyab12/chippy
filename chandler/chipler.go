@@ -409,7 +409,7 @@ func (config *ApiConfig) PostRevoke(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ChirpyRedWebhook(w http.ResponseWriter, r *http.Request) {
+func (config *ApiConfig) ChirpyRedWebhook(w http.ResponseWriter, r *http.Request) {
 	const ChirpyRedReq = "user.upgraded"
 	if jsonBody, decodeErr := DecodeRequestBody(r, &WebhookJson{}); decodeErr != nil {
 		invalidChippyRequestStruct(w)
@@ -427,6 +427,11 @@ func ChirpyRedWebhook(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
+	} else if r.Header.Get("Authorization") == "" {
+		log.Println("Authorization header not provided")
+		w.WriteHeader(http.StatusUnauthorized)
+	} else if extractedApiKey := strings.Split(r.Header.Get("Authorization"), "Bearer ")[1]; extractedApiKey != config.PolkaKey {
+		w.WriteHeader(http.StatusUnauthorized)
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}

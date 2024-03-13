@@ -186,6 +186,21 @@ func (chibe *DB) GetChirps() ([]Chirp, error) {
 	return chirps, nil
 }
 
+func (chibe *DB) GetChirpsByAuthorID(targetAuthorID int) (filteredChirps []Chirp, filteredChirpsErr error) {
+	if allChirps, getChirpsErr := chibe.GetChirps(); getChirpsErr != nil {
+		return allChirps, getChirpsErr
+	} else {
+		for _, chirp := range allChirps {
+			if chirp.AuthorID == targetAuthorID {
+				filteredChirps = append(filteredChirps, chirp)
+			}
+		}
+		// Sort filteredChirps
+		slices.SortFunc(filteredChirps, func(a, b Chirp) int { return cmp.Compare(a.Uid, b.Uid) })
+	}
+	return filteredChirps, filteredChirpsErr
+}
+
 // GetUsers returns all users in the database
 func (chibe *DB) GetUsers() ([]User, error) {
 	var users []User

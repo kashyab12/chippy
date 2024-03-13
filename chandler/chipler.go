@@ -102,10 +102,28 @@ func (config *ApiConfig) PostChirp(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetChirp(w http.ResponseWriter, _ *http.Request) {
+func GetChirp(w http.ResponseWriter, r *http.Request) {
 	if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
 		log.Printf("Error while creating the database: %v\n", newDbErr)
 		w.WriteHeader(http.StatusInternalServerError)
+	} else if authorIDFilter := r.URL.Query().Get("author_id"); authorIDFilter != "" {
+		if authorID, convErr := strconv.Atoi(authorIDFilter); convErr != nil {
+			log.Println(convErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if filteredChirps, getFilteredChirpsErr := chibeDb.GetChirpsByAuthorID(authorID); getFilteredChirpsErr != nil {
+			log.Printf("Error while obtaining chibe entries: %v\n", filteredChirps)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else if rawJsonList, encodingErr := json.Marshal(filteredChirps); encodingErr != nil {
+			log.Printf("Error while encoding chibe entries: %v\n", encodingErr)
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			_, err := w.Write(rawJsonList)
+			if err != nil {
+				return
+			}
+		}
 	} else if chirps, getChirpsErr := chibeDb.GetChirps(); getChirpsErr != nil {
 		log.Printf("Error while obtaining chibe entries: %v\n", getChirpsErr)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -430,7 +448,7 @@ func (config *ApiConfig) ChirpyRedWebhook(w http.ResponseWriter, r *http.Request
 	} else if r.Header.Get("Authorization") == "" {
 		log.Println("Authorization header not provided")
 		w.WriteHeader(http.StatusUnauthorized)
-	} else if extractedApiKey := strings.Split(r.Header.Get("Authorization"), "Bearer ")[1]; extractedApiKey != config.PolkaKey {
+	} else if extractedApiKey := strings.Split(r.Header.Get("Authorization"), "ApiKey ")[1]; extractedApiKey != config.PolkaKey {
 		w.WriteHeader(http.StatusUnauthorized)
 	} else {
 		w.WriteHeader(http.StatusOK)

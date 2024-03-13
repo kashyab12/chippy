@@ -103,6 +103,7 @@ func (config *ApiConfig) PostChirp(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetChirp(w http.ResponseWriter, r *http.Request) {
+	sortMethod := r.URL.Query().Get("sort")
 	if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
 		log.Printf("Error while creating the database: %v\n", newDbErr)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -110,7 +111,7 @@ func GetChirp(w http.ResponseWriter, r *http.Request) {
 		if authorID, convErr := strconv.Atoi(authorIDFilter); convErr != nil {
 			log.Println(convErr)
 			w.WriteHeader(http.StatusInternalServerError)
-		} else if filteredChirps, getFilteredChirpsErr := chibeDb.GetChirpsByAuthorID(authorID); getFilteredChirpsErr != nil {
+		} else if filteredChirps, getFilteredChirpsErr := chibeDb.GetChirpsByAuthorID(authorID, sortMethod); getFilteredChirpsErr != nil {
 			log.Printf("Error while obtaining chibe entries: %v\n", filteredChirps)
 			w.WriteHeader(http.StatusInternalServerError)
 		} else if rawJsonList, encodingErr := json.Marshal(filteredChirps); encodingErr != nil {
@@ -124,7 +125,7 @@ func GetChirp(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-	} else if chirps, getChirpsErr := chibeDb.GetChirps(); getChirpsErr != nil {
+	} else if chirps, getChirpsErr := chibeDb.GetChirps(sortMethod); getChirpsErr != nil {
 		log.Printf("Error while obtaining chibe entries: %v\n", getChirpsErr)
 		w.WriteHeader(http.StatusInternalServerError)
 	} else if rawJsonList, encodingErr := json.Marshal(chirps); encodingErr != nil {
@@ -150,7 +151,7 @@ func GetSingleChirp(w http.ResponseWriter, r *http.Request) {
 	} else if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
 		log.Printf("Error while creating the database: %v\n", newDbErr)
 		w.WriteHeader(http.StatusInternalServerError)
-	} else if chirps, getChirpsErr := chibeDb.GetChirps(); getChirpsErr != nil {
+	} else if chirps, getChirpsErr := chibeDb.GetChirps("asc"); getChirpsErr != nil {
 		log.Printf("Error while obtaining chibe entries: %v\n", getChirpsErr)
 		w.WriteHeader(http.StatusInternalServerError)
 	} else if targetIdx := slices.IndexFunc(chirps, func(ch database.Chirp) bool {
@@ -201,7 +202,7 @@ func (config *ApiConfig) DeleteChirp(w http.ResponseWriter, r *http.Request) {
 		} else if chibeDb, newDbErr := database.NewDB(database.ChibeFile); newDbErr != nil {
 			log.Printf("Error while creating the database: %v\n", newDbErr)
 			w.WriteHeader(http.StatusInternalServerError)
-		} else if chirps, getChirpsErr := chibeDb.GetChirps(); getChirpsErr != nil {
+		} else if chirps, getChirpsErr := chibeDb.GetChirps(""); getChirpsErr != nil {
 			log.Printf("Error while obtaining chibe entries: %v\n", getChirpsErr)
 			w.WriteHeader(http.StatusInternalServerError)
 		} else if targetIdx := slices.IndexFunc(chirps, func(ch database.Chirp) bool {

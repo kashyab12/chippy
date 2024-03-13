@@ -58,7 +58,7 @@ func NewDB(path string) (*DB, error) {
 // CreateChirp creates a new chirp and saves it to disk
 func (chibe *DB) CreateChirp(body string, authorId int) (Chirp, error) {
 	var newChirp Chirp
-	if chirps, getChirpsErr := chibe.GetChirps(); getChirpsErr != nil {
+	if chirps, getChirpsErr := chibe.GetChirps(""); getChirpsErr != nil {
 		return newChirp, getChirpsErr
 	} else {
 		newChirpId := 1
@@ -173,7 +173,7 @@ func (chibe *DB) ensureDB() error {
 }
 
 // GetChirps returns all chirps in the database
-func (chibe *DB) GetChirps() ([]Chirp, error) {
+func (chibe *DB) GetChirps(sortMethod string) ([]Chirp, error) {
 	var chirps []Chirp
 	if dbStruct, loadErr := chibe.loadDB(); loadErr != nil {
 		return nil, loadErr
@@ -181,13 +181,17 @@ func (chibe *DB) GetChirps() ([]Chirp, error) {
 		for _, chirp := range dbStruct.Chirps {
 			chirps = append(chirps, chirp)
 		}
-		slices.SortFunc(chirps, func(a, b Chirp) int { return cmp.Compare(a.Uid, b.Uid) })
+		if sortMethod == "desc" {
+			slices.SortFunc(chirps, func(a, b Chirp) int { return cmp.Compare(b.Uid, a.Uid) })
+		} else {
+			slices.SortFunc(chirps, func(a, b Chirp) int { return cmp.Compare(a.Uid, b.Uid) })
+		}
 	}
 	return chirps, nil
 }
 
-func (chibe *DB) GetChirpsByAuthorID(targetAuthorID int) (filteredChirps []Chirp, filteredChirpsErr error) {
-	if allChirps, getChirpsErr := chibe.GetChirps(); getChirpsErr != nil {
+func (chibe *DB) GetChirpsByAuthorID(targetAuthorID int, sortMethod string) (filteredChirps []Chirp, filteredChirpsErr error) {
+	if allChirps, getChirpsErr := chibe.GetChirps(sortMethod); getChirpsErr != nil {
 		return allChirps, getChirpsErr
 	} else {
 		for _, chirp := range allChirps {
@@ -195,8 +199,11 @@ func (chibe *DB) GetChirpsByAuthorID(targetAuthorID int) (filteredChirps []Chirp
 				filteredChirps = append(filteredChirps, chirp)
 			}
 		}
-		// Sort filteredChirps
-		slices.SortFunc(filteredChirps, func(a, b Chirp) int { return cmp.Compare(a.Uid, b.Uid) })
+		if sortMethod == "desc" {
+			slices.SortFunc(filteredChirps, func(a, b Chirp) int { return cmp.Compare(b.Uid, a.Uid) })
+		} else {
+			slices.SortFunc(filteredChirps, func(a, b Chirp) int { return cmp.Compare(a.Uid, b.Uid) })
+		}
 	}
 	return filteredChirps, filteredChirpsErr
 }
